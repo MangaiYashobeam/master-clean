@@ -22,32 +22,207 @@ class LiveAnalysisController {
         this.romChart = null;
         this.dataPoints = [];
         this.maxDataPoints = 50; // Últimos 50 puntos en el gráfico
+        this.environmentInfo = null;
+        this.isClientCamera = false;
+        this.clientCameraActive = false;
+        this.videoWrapper = document.getElementById('videoWrapper');
+        this.clientVideoElement = document.getElementById('clientVideo');
+        this.serverVideoElement = document.getElementById('videoFeed');
+        this.loadingOverlay = document.getElementById('loadingOverlay');
+        this.loadingMessageText = document.getElementById('loadingMessageText');
+        this.clientCameraHint = document.getElementById('clientCameraHint');
         
         // Inicializar
-        this.init();
+        this.init().catch((error) => {
+            console.error('[LiveAnalysis] Error durante la inicialización:', error);
+        });
     }
     
     /**
      * Inicialización del controller
      */
-    init() {
+    async init() {
         console.log('[LiveAnalysis] Inicializando con config:', this.config);
         
+        await this.detectEnvironment();
+        this.updateVideoWrapperMode();
         // Inicializar gráfico de ROM
         this.initROMChart();
         
         // Event listeners
         this.setupEventListeners();
         
-        // Ocultar overlay cuando el video stream empiece a funcionar (3 segundos)
-        setTimeout(() => {
-            const overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                overlay.classList.add('hidden');
-            }
-        }, 3000);
+        if (!this.isClientCameraMode()) {
+            this.hideLoadingOverlayAfterDelay();
+        }
         
         console.log('[LiveAnalysis] Inicialización completa');
+    }
+
+    async detectEnvironment() {
+        try {
+            const response = await fetch('/api/environment_info');
+            const data = await response.json();
+            if (response.ok && data.success) {
+                this.environmentInfo = data.environment;
+                this.applyRemoteCameraPolicy();
+                console.log('[LiveAnalysis] Entorno detectado:', this.environmentInfo);
+            } else {
+                throw new Error(data.error || 'Respuesta inválida');
+            }
+        } catch (error) {
+            console.warn('[LiveAnalysis] No se pudo detectar entorno, asumiendo server-side:', error);
+            this.environmentInfo = {
+                camera_mode: 'server_side'
+            };
+            this.applyRemoteCameraPolicy();
+        }
+        this.isClientCamera = (this.environmentInfo?.camera_mode === 'client_side');
+    }
+
+    applyRemoteCameraPolicy() {
+        const hostname = window.location?.hostname || '';
+        const normalizedHost = hostname.toLowerCase();
+        const isLocalHost = !normalizedHost || normalizedHost === 'localhost' || normalizedHost === '127.0.0.1' || normalizedHost === '0.0.0.0' || normalizedHost.endsWith('.local');
+
+        if (!isLocalHost) {
+            if (!this.environmentInfo) {
+                this.environmentInfo = {};
+            }
+            if (this.environmentInfo.camera_mode !== 'client_side') {
+                console.info('[LiveAnalysis] Forzando cámara cliente por host remoto:', normalizedHost);
+            }
+            this.environmentInfo.camera_mode = 'client_side';
+        }
+    }
+
+    updateVideoWrapperMode() {
+        const isClient = this.isClientCameraMode();
+        if (this.videoWrapper) {
+            this.videoWrapper.classList.toggle('client-mode', isClient);
+            this.videoWrapper.classList.toggle('server-mode', !isClient);
+        }
+        if (this.serverVideoElement) {
+            this.serverVideoElement.classList.toggle('hidden', isClient);
+        }
+        if (!isClient && this.clientVideoElement) {
+            this.clientVideoElement.classList.add('hidden');
+        }
+        this.showClientHint(isClient);
+        this.setLoadingMessage(isClient ? 'Esperando cámara del navegador...' : 'Iniciando cámara...');
+    }
+
+    isClientCameraMode() {
+        return this.isClientCamera === true;
+    }
+
+    setLoadingMessage(message) {
+        if (this.loadingMessageText && typeof message === 'string') {
+            this.loadingMessageText.textContent = message;
+        }
+    }
+
+    hideLoadingOverlayAfterDelay(delay = 3000) {
+        if (!this.loadingOverlay) {
+            return;
+        }
+        setTimeout(() => this.hideLoadingOverlay(), delay);
+    }
+
+    hideLoadingOverlay() {
+        if (this.loadingOverlay) {
+            this.loadingOverlay.classList.add('hidden');
+        }
+    }
+
+    showClientHint(show) {
+        if (this.clientCameraHint) {
+            this.clientCameraHint.classList.toggle('hidden', !show);
+        }
+    }
+
+    async initializeClientCameraIfNeeded(segment, exercise) {
+        if (!this.isClientCameraMode()) {
+            return true;
+        }
+
+        if (!window.clientCameraHandler) {
+            console.error('[LiveAnalysis] ClientCameraHandler no está disponible');
+            return false;
+        }
+
+        this.clientCameraHandler = window.clientCameraHandler;
+
+        if (this.clientCameraActive && this.clientCameraHandler.stream) {
+            this.attachClientVideoStream(this.clientCameraHandler.stream);
+            return true;
+        }
+
+        try {
+            this.setLoadingMessage('Solicitando acceso a tu cámara...');
+            if (this.loadingOverlay) {
+                this.loadingOverlay.classList.remove('hidden');
+            }
+
+            const started = await this.clientCameraHandler.startCamera(segment, exercise);
+            if (!started) {
+                this.setLoadingMessage('No se pudo iniciar la cámara.');
+                return false;
+            }
+
+            this.clientCameraActive = true;
+            this.attachClientVideoStream(this.clientCameraHandler.stream);
+            this.hideLoadingOverlayAfterDelay();
+            return true;
+        } catch (error) {
+            console.error('[LiveAnalysis] Error inicializando cámara cliente:', error);
+            this.setLoadingMessage('Error iniciando cámara. Reintenta.');
+            return false;
+        }
+    }
+
+    attachClientVideoStream(stream) {
+        if (!this.clientVideoElement) {
+            return;
+        }
+        this.clientVideoElement.srcObject = stream;
+        this.clientVideoElement.classList.remove('hidden');
+        if (this.isClientCameraMode()) {
+            this.showClientHint(false);
+        }
+        this.clientVideoElement.play().catch((err) => {
+            console.warn('[LiveAnalysis] No se pudo reproducir video cliente:', err);
+        });
+    }
+
+    detachClientVideoStream() {
+        if (this.clientVideoElement) {
+            this.clientVideoElement.pause();
+            this.clientVideoElement.srcObject = null;
+            this.clientVideoElement.classList.add('hidden');
+        }
+        if (this.isClientCameraMode()) {
+            this.showClientHint(true);
+        }
+    }
+
+    async stopClientCamera() {
+        if (!this.clientCameraHandler || typeof this.clientCameraHandler.stopCamera !== 'function') {
+            this.detachClientVideoStream();
+            this.clientCameraHandler = null;
+            this.clientCameraActive = false;
+            return;
+        }
+
+        try {
+            await this.clientCameraHandler.stopCamera();
+        } catch (error) {
+            console.warn('[LiveAnalysis] Error deteniendo cámara cliente:', error);
+        }
+
+        this.detachClientVideoStream();
+        this.clientCameraHandler = null;
+        this.clientCameraActive = false;
     }
     
     /**
@@ -64,6 +239,8 @@ class LiveAnalysisController {
                 e.preventDefault();
                 e.returnValue = '';
             }
+
+            this.stopClientCamera();
         });
     }
     
@@ -135,7 +312,29 @@ class LiveAnalysisController {
      */
     async startAnalysis() {
         console.log('[LiveAnalysis] Iniciando análisis...');
-        
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        if (startBtn) {
+            startBtn.disabled = true;
+        }
+
+        if (this.isClientCameraMode()) {
+            const cameraReady = await this.initializeClientCameraIfNeeded(
+                this.config.segment_type,
+                this.config.exercise_key
+            );
+
+            if (!cameraReady) {
+                if (startBtn) {
+                    startBtn.disabled = false;
+                }
+                alert('No se pudo iniciar la cámara del navegador. Verifica los permisos.');
+                return;
+            }
+        }
+
         try {
             const response = await fetch('/api/analysis/start', {
                 method: 'POST',
@@ -154,8 +353,12 @@ class LiveAnalysisController {
                 this.isActive = true;
                 
                 // Actualizar UI
-                document.getElementById('startBtn').disabled = true;
-                document.getElementById('stopBtn').disabled = false;
+                if (startBtn) {
+                    startBtn.disabled = true;
+                }
+                if (stopBtn) {
+                    stopBtn.disabled = false;
+                }
                 
                 // Iniciar polling de datos
                 this.startDataPolling();
@@ -167,6 +370,13 @@ class LiveAnalysisController {
         } catch (error) {
             console.error('[LiveAnalysis] Error al iniciar análisis:', error);
             alert('Error al iniciar el análisis: ' + error.message);
+            if (this.isClientCameraMode()) {
+                await this.stopClientCamera();
+            }
+        }
+
+        if (!this.isActive && startBtn) {
+            startBtn.disabled = false;
         }
     }
     
@@ -175,7 +385,14 @@ class LiveAnalysisController {
      */
     async stopAnalysis(showModal = true) {
         console.log('[LiveAnalysis] Deteniendo análisis...');
-        
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        if (stopBtn) {
+            stopBtn.disabled = true;
+        }
+
         try {
             const response = await fetch('/api/analysis/stop', {
                 method: 'POST'
@@ -190,8 +407,12 @@ class LiveAnalysisController {
                 this.stopDataPolling();
                 
                 // Actualizar UI
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('stopBtn').disabled = true;
+                if (startBtn) {
+                    startBtn.disabled = false;
+                }
+                if (stopBtn) {
+                    stopBtn.disabled = true;
+                }
                 
                 // Mostrar modal de resultados
                 if (showModal) {
@@ -205,6 +426,13 @@ class LiveAnalysisController {
         } catch (error) {
             console.error('[LiveAnalysis] Error al detener análisis:', error);
             alert('Error al detener el análisis: ' + error.message);
+            if (stopBtn) {
+                stopBtn.disabled = false;
+            }
+        }
+
+        if (this.isClientCameraMode()) {
+            await this.stopClientCamera();
         }
     }
     

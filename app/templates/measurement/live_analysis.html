@@ -27,18 +27,31 @@
                 </div>
 
                 <!-- Video Feed -->
-                <div class="video-wrapper">
+                <div class="video-wrapper" id="videoWrapper">
+                    <video id="clientVideo"
+                           class="video-stream client-video hidden"
+                           autoplay
+                           playsinline
+                           muted>
+                    </video>
+
                     <img id="videoFeed" 
                          src="{{ url_for('api.video_feed') }}" 
                          alt="Video en vivo"
-                         class="video-stream">
+                         class="video-stream server-video">
                     
+                    <div id="clientCameraHint" class="video-overlay hint hidden">
+                        <i class="bi bi-camera-video"></i>
+                        <p class="mt-2 mb-0">Permite el acceso a la cámara cuando el navegador lo solicite.</p>
+                        <small class="text-light">La imagen se mostrará aquí inmediatamente.</small>
+                    </div>
+
                     <!-- Overlay de carga -->
                     <div id="loadingOverlay" class="video-overlay loading">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Cargando...</span>
                         </div>
-                        <p class="mt-2">Iniciando cámara...</p>
+                        <p class="mt-2" id="loadingMessageText">Iniciando cámara...</p>
                     </div>
                 </div>
 
@@ -234,6 +247,22 @@
     display: block;
 }
 
+.video-stream.hidden {
+    display: none;
+}
+
+.client-video {
+    background: #111;
+}
+
+.video-wrapper.client-mode .server-video {
+    display: none;
+}
+
+.video-wrapper.server-mode .client-video {
+    display: none;
+}
+
 .video-overlay {
     position: absolute;
     top: 0;
@@ -255,6 +284,17 @@
 
 .video-overlay.hidden {
     display: none;
+}
+
+.video-overlay.hint {
+    text-align: center;
+    padding: 20px;
+    font-size: 1rem;
+    gap: 10px;
+}
+
+.video-overlay.hint i {
+    font-size: 2.2rem;
 }
 
 .video-controls {
@@ -465,5 +505,6 @@
 </script>
 
 <!-- Script principal de análisis -->
+<script src="{{ url_for('static', filename='js/client_camera_handler.js') }}"></script>
 <script src="{{ url_for('static', filename='js/live_analysis.js') }}"></script>
 {% endblock %}

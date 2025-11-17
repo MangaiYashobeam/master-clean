@@ -21,6 +21,9 @@ from flask import (
     Blueprint, jsonify, request, session, current_app, Response
 )
 from app.routes.auth import login_required
+from app.analyzers import ShoulderProfileAnalyzer, ShoulderFrontalAnalyzer
+from app.core.client_frame_receiver import client_frame_receiver
+import os
 import cv2
 import numpy as np
 import logging
@@ -34,6 +37,91 @@ logger = logging.getLogger(__name__)
 
 # Variable global para el analyzer actual (compartida entre requests)
 current_analyzer = None
+last_processed_frame = None
+
+ANALYZER_CLASS_MAP = {
+    'shoulder_profile': ShoulderProfileAnalyzer,
+    'shoulder_frontal': ShoulderFrontalAnalyzer,
+}
+
+
+def _ensure_analyzer(analyzer_type=None):
+    """Crea (si es necesario) y retorna el analyzer activo."""
+    global current_analyzer
+
+    if analyzer_type is None:
+        analyzer_type = session.get('analyzer_type')
+
+    if not analyzer_type:
+        raise ValueError('No hay analyzer asignado a la sesión')
+
+    analyzer_class = ANALYZER_CLASS_MAP.get(analyzer_type)
+    if analyzer_class is None:
+        raise ValueError(f"Analyzer '{analyzer_type}' no implementado aún")
+
+    if current_analyzer is None or type(current_analyzer) is not analyzer_class:
+        if current_analyzer is not None:
+            current_analyzer.cleanup()
+        current_analyzer = analyzer_class(
+            processing_width=640,
+            processing_height=480,
+            show_skeleton=False
+        )
+        logger.info("Analyzer '%s' inicializado", analyzer_type)
+
+    return current_analyzer
+
+
+def _process_frame_with_analyzer(frame, analyzer=None):
+    """Procesa un frame con el analyzer activo y almacena referencia."""
+    global last_processed_frame
+
+    if frame is None:
+        return
+
+    analyzer = analyzer or _ensure_analyzer()
+    try:
+        processed_frame = analyzer.process_frame(frame)
+        last_processed_frame = processed_frame
+    except Exception as exc:  # pragma: no cover - solo logging
+        current_app.logger.error('Error al procesar frame del cliente: %s', exc, exc_info=True)
+
+
+@api_bp.route('/environment_info', methods=['GET'])
+def environment_info():
+    """Devuelve información del entorno para configurar la cámara del cliente"""
+    try:
+        is_remote = str(os.getenv('IS_REMOTE_SERVER', '')).lower() in ('1', 'true', 'yes')
+
+        request_host = (request.host or '').split(':')[0].lower()
+        is_local_host = request_host in ('localhost', '127.0.0.1') or request_host.endswith('.local')
+
+        override = os.getenv('CAMERA_MODE', '').strip().lower()
+
+        # Detectar si existe una cámara física accesible (Linux /dev/videoX)
+        video_devices = ['/dev/video0', '/dev/video1']
+        has_physical_camera = any(os.path.exists(dev) for dev in video_devices)
+
+        if override in ('client_side', 'server_side'):
+            camera_mode = override
+        else:
+            # Default: si estamos sirviendo desde localhost con cámara física disponible,
+            # usamos modo servidor. En dominios remotos forzamos cámara del navegador.
+            if is_local_host and has_physical_camera and not is_remote:
+                camera_mode = 'server_side'
+            else:
+                camera_mode = 'client_side'
+
+        environment = {
+            'platform': 'remote_server' if is_remote else 'local',
+            'camera_mode': camera_mode,
+            'has_physical_camera': has_physical_camera,
+            'timestamp': time.time()
+        }
+        return jsonify({'success': True, 'environment': environment}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener environment info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================================
@@ -237,7 +325,6 @@ def video_feed():
         Response: Stream MJPEG multipart
     """
     from hardware.camera_manager import camera_manager
-    from app.analyzers import ShoulderProfileAnalyzer, ShoulderFrontalAnalyzer
     
     # ⚠️ CRÍTICO: Capturar valores de session ANTES del generador
     # (el generador se ejecuta fuera del request context)
@@ -245,41 +332,20 @@ def video_feed():
     user_id = session.get('user_id')
     
     def generate_frames():
-        global current_analyzer
-        
         if not analyzer_type or not user_id:
-            # Frame de error
             error_frame = _create_error_frame("No hay ejercicio activo. Selecciona un ejercicio primero.")
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + error_frame + b'\r\n')
             return
-        
-        # Mapa de analyzers
-        analyzer_classes = {
-            'shoulder_profile': ShoulderProfileAnalyzer,
-            'shoulder_frontal': ShoulderFrontalAnalyzer,
-            # Agregar más analyzers aquí en el futuro
-        }
-        
-        # Inicializar analyzer si no existe o es diferente
-        analyzer_class = analyzer_classes.get(analyzer_type)
-        if not analyzer_class:
-            error_frame = _create_error_frame(f"Analyzer '{analyzer_type}' no implementado aún")
+
+        try:
+            analyzer_instance = _ensure_analyzer(analyzer_type)
+        except ValueError as setup_error:
+            error_frame = _create_error_frame(str(setup_error))
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + error_frame + b'\r\n')
             return
-        
-        # Crear analyzer si no existe
-        if current_analyzer is None or type(current_analyzer).__name__ != analyzer_class.__name__:
-            if current_analyzer is not None:
-                current_analyzer.cleanup()
-            current_analyzer = analyzer_class(
-                processing_width=640,
-                processing_height=480,
-                show_skeleton=False  # Cambiar a True si quieres ver skeleton completo
-            )
-            logger.info(f"Analyzer '{analyzer_type}' inicializado para usuario '{user_id}'")
-        
+
         # Adquirir cámara (context manager automático)
         try:
             with camera_manager.acquire_camera(user_id=user_id, width=1280, height=720) as cap:
@@ -294,7 +360,7 @@ def video_feed():
                     
                     # Procesar frame con analyzer
                     try:
-                        processed_frame = current_analyzer.process_frame(frame)
+                        processed_frame = analyzer_instance.process_frame(frame)
                     except Exception as e:
                         logger.error(f"Error al procesar frame: {e}")
                         processed_frame = _create_error_frame(f"Error en procesamiento: {str(e)}")
@@ -375,6 +441,14 @@ def start_analysis():
                 'success': False,
                 'error': 'Faltan parámetros: segment_type y exercise_key'
             }), 400
+
+        try:
+            _ensure_analyzer()
+        except ValueError as analyzer_error:
+            return jsonify({
+                'success': False,
+                'error': str(analyzer_error)
+            }), 400
         
         # Guardar en sesión
         session['analysis_active'] = True
@@ -420,6 +494,9 @@ def stop_analysis():
         # Limpiar sesión
         session['analysis_active'] = False
         session.pop('analysis_start_time', None)
+
+        if client_frame_receiver.is_active:
+            client_frame_receiver.stop_receiving()
         
         current_app.logger.info(
             f"Análisis detenido por usuario {session.get('user_id')} | "
@@ -454,20 +531,23 @@ def get_current_data():
     global current_analyzer
     
     try:
-        if current_analyzer is None:
-            return jsonify({
-                'success': False,
-                'error': 'No hay analyzer activo',
-                'data': {}
-            }), 200  # No es error 500, solo no hay datos
-        
-        # Obtener datos del analyzer
-        data = current_analyzer.get_current_data()
+        analyzer = current_analyzer
+        if analyzer is None:
+            try:
+                analyzer = _ensure_analyzer()
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'error': 'No hay analyzer activo',
+                    'data': {}
+                }), 200
+
+        data = analyzer.get_current_data()
         
         return jsonify({
             'success': True,
             'data': data,
-            'timestamp': request.timestamp
+            'timestamp': time.time()
         }), 200
     
     except Exception as e:
@@ -494,9 +574,9 @@ def reset_analysis():
     try:
         if current_analyzer is None:
             return jsonify({
-                'success': False,
-                'error': 'No hay analyzer activo'
-            }), 400
+                'success': True,
+                'message': 'No hay analyzer activo, nada que resetear'
+            }), 200
         
         # Resetear analyzer
         current_analyzer.reset()
@@ -514,6 +594,81 @@ def reset_analysis():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# ============================================================================
+# CLIENT CAMERA ENDPOINTS
+# ============================================================================
+
+@api_bp.route('/prepare_client_receiver/<segment>/<exercise>', methods=['POST'])
+@login_required
+def prepare_client_receiver(segment, exercise):
+    """Activa el receptor de frames del cliente antes de iniciar uploads."""
+    try:
+        _ensure_analyzer()
+        if not client_frame_receiver.is_active:
+            client_frame_receiver.start_receiving()
+        stats = client_frame_receiver.get_stats()
+        return jsonify({
+            'success': True,
+            'message': 'Receiver listo',
+            'stats': stats,
+            'segment': segment,
+            'exercise': exercise
+        }), 200
+    except ValueError as analyzer_error:
+        return jsonify({'success': False, 'error': str(analyzer_error)}), 400
+    except Exception as exc:
+        current_app.logger.error(f"Error al preparar receiver: {exc}")
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
+
+@api_bp.route('/upload_frame/<segment>/<exercise>', methods=['POST'])
+@login_required
+def upload_frame(segment, exercise):
+    """Recibe frames desde el navegador (modo cámara cliente)."""
+    try:
+        payload = request.get_json(silent=True)
+        if not payload or 'frame' not in payload:
+            return jsonify({'success': False, 'error': 'Payload inválido'}), 400
+
+        metadata = {
+            'width': payload.get('width') or 0,
+            'height': payload.get('height') or 0,
+            'device_label': payload.get('device_label', ''),
+        }
+
+        analyzer = _ensure_analyzer()
+
+        if not client_frame_receiver.is_active:
+            client_frame_receiver.start_receiving()
+
+        received = client_frame_receiver.receive_frame(
+            payload['frame'],
+            payload.get('timestamp'),
+            metadata
+        )
+
+        if not received:
+            return jsonify({'success': False, 'error': 'Frame descartado'}), 500
+
+        frame, _ = client_frame_receiver.get_current_frame()
+        if frame is not None:
+            _process_frame_with_analyzer(frame, analyzer)
+
+        stats = client_frame_receiver.get_stats()
+        return jsonify({
+            'success': True,
+            'frame_count': stats['frame_count'],
+            'segment': segment,
+            'exercise': exercise
+        }), 200
+
+    except ValueError as analyzer_error:
+        return jsonify({'success': False, 'error': str(analyzer_error)}), 400
+    except Exception as exc:
+        current_app.logger.error(f"Error subiendo frame: {exc}", exc_info=True)
+        return jsonify({'success': False, 'error': str(exc)}), 500
 
 
 # ============================================================================
