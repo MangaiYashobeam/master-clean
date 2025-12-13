@@ -70,7 +70,28 @@ class VPSCameraHandler {
         this.canvasContext = this.canvasElement.getContext('2d');
         
         // Elemento donde se mostrará el video procesado
+        // Buscar primero 'processedFrame', luego 'videoFeed'
         this.videoElement = document.getElementById(this.options.videoElementId);
+        if (!this.videoElement) {
+            this.videoElement = document.getElementById('videoFeed');
+        }
+        
+        // Si aún no existe, crear uno
+        if (!this.videoElement) {
+            console.warn('[VPSCamera] Elemento de video no encontrado, creando uno nuevo');
+            const videoWrapper = document.getElementById('videoWrapper');
+            if (videoWrapper) {
+                const img = document.createElement('img');
+                img.id = this.options.videoElementId || 'processedFrame';
+                img.className = 'video-stream';
+                img.alt = 'Video procesado';
+                img.style.cssText = 'width: 100%; height: auto; display: block;';
+                videoWrapper.appendChild(img);
+                this.videoElement = img;
+            }
+        }
+        
+        console.log('[VPSCamera] videoElement:', this.videoElement?.id || 'NO ENCONTRADO');
     }
     
     /**
@@ -175,6 +196,10 @@ class VPSCameraHandler {
             // Iniciar bucle de captura
             this.isRunning = true;
             this._starting = false;
+            
+            // Mostrar el primer frame inmediatamente
+            this._showFirstFrame();
+            
             this._captureLoop();
             
             // Ocultar overlay de error si existe
@@ -194,6 +219,25 @@ class VPSCameraHandler {
             this._starting = false;
             this._showCameraError(error);
             return false;
+        }
+    }
+    
+    /**
+     * Muestra el primer frame capturado inmediatamente
+     */
+    _showFirstFrame() {
+        if (this.videoElement && this.captureVideo.videoWidth > 0) {
+            // Dibujar en canvas
+            this.canvasContext.drawImage(
+                this.captureVideo, 
+                0, 0, 
+                this.canvasElement.width, 
+                this.canvasElement.height
+            );
+            // Mostrar en elemento
+            const frame = this.canvasElement.toDataURL('image/jpeg', this.options.quality);
+            this.videoElement.src = frame;
+            console.log('[VPSCamera] Primer frame mostrado');
         }
     }
     
