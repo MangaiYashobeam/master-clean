@@ -972,7 +972,24 @@ def process_client_frame():
         analyzer = get_cached_analyzer(exercise_type, analyzer_class)
         
         # Procesar frame con MediaPipe
-        processed_frame, analysis_data = analyzer.process_frame(frame)
+        result = analyzer.process_frame(frame)
+        
+        # El analyzer puede retornar solo el frame o una tupla (frame, data)
+        if isinstance(result, tuple):
+            processed_frame, analysis_data = result
+        else:
+            processed_frame = result
+            # Obtener datos del analyzer directamente
+            analysis_data = {
+                'angle': getattr(analyzer, 'current_angle', None),
+                'min_angle': getattr(analyzer, 'min_angle', None),
+                'max_angle': getattr(analyzer, 'max_angle', None),
+                'side': getattr(analyzer, 'side', None),
+                'orientation': getattr(analyzer, 'orientation', None),
+                'landmarks_detected': getattr(analyzer, 'landmarks_detected', False),
+                'posture_valid': getattr(analyzer, 'posture_valid', False),
+                'confidence': getattr(analyzer, 'confidence', 0)
+            }
         
         # Codificar frame procesado a JPEG
         jpeg_quality = session.get('jpeg_quality', 50)  # Calidad reducida para VPS
