@@ -78,9 +78,27 @@ class VPSCameraHandler {
      * @returns {Promise<boolean>}
      */
     async start() {
+        // Evitar múltiples inicios simultáneos
+        if (this.isRunning) {
+            console.log('[VPSCamera] Ya está corriendo, ignorando start()');
+            return true;
+        }
+        
+        if (this._starting) {
+            console.log('[VPSCamera] Ya está iniciando, ignorando start()');
+            return false;
+        }
+        
+        this._starting = true;
         console.log('[VPSCamera] Iniciando captura de cámara del cliente...');
         
         try {
+            // Primero detener cualquier stream existente
+            this.stop();
+            
+            // Pequeña pausa para liberar el dispositivo
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             // Solicitar acceso a la cámara
             const constraints = {
                 video: {
@@ -106,15 +124,24 @@ class VPSCameraHandler {
             
             // Iniciar bucle de captura
             this.isRunning = true;
+            this._starting = false;
             this._captureLoop();
+            
+            // Ocultar overlay de error si existe
+            this._hideCameraError();
             
             // Mostrar indicador de modo VPS
             this._showVPSIndicator();
+            
+            // Ocultar loading overlay
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
             
             return true;
             
         } catch (error) {
             console.error('[VPSCamera] ❌ Error al acceder a la cámara:', error);
+            this._starting = false;
             this._showCameraError(error);
             return false;
         }
@@ -300,13 +327,35 @@ class VPSCameraHandler {
                     z-index: 100;
                 `;
                 parent.style.position = 'relative';
+                
+                // Remover error anterior si existe
+                const existingError = parent.querySelector('.camera-error-overlay');
+                if (existingError) existingError.remove();
+                
                 parent.appendChild(errorDiv);
             }
         }
         
+        // Ocultar loading overlay
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        
         // También mostrar toast
         if (typeof showToast === 'function') {
             showToast(errorMsg, 'error');
+        }
+    }
+    
+    /**
+     * Oculta el error de cámara
+     */
+    _hideCameraError() {
+        if (this.videoElement) {
+            const parent = this.videoElement.parentElement;
+            if (parent) {
+                const errorDiv = parent.querySelector('.camera-error-overlay');
+                if (errorDiv) errorDiv.remove();
+            }
         }
     }
     
