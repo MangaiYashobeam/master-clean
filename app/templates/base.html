@@ -14,6 +14,9 @@
     <!-- Responsive Fixes (DEBE cargar DESPUES de biomech_styles.css) -->
     <link href="{{ url_for('static', filename='css/responsive_fixes.css') }}?v=1.2" rel="stylesheet">
     
+    <!-- Estilos específicos de cada página (carga DESPUÉS de todo para mayor especificidad) -->
+    {% block styles %}{% endblock %}
+    
     <!-- MediaPipe -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
@@ -43,12 +46,12 @@
                         <i class="bi bi-house-door"></i>
                         <span>Inicio</span>
                     </a>
-                    <a href="{{ url_for('main.subjects') }}" class="nav-link-enhanced {% if request.endpoint == 'main.subjects' %}active{% endif %}">
+                    <a href="{{ url_for('main.subjects') }}" class="nav-link-enhanced {% if request.endpoint and 'subjects' in request.endpoint %}active{% endif %}">
                         <i class="bi bi-people"></i>
                         <span>Sujetos</span>
                     </a>
-                    <a href="{{ url_for('main.sessions') }}" class="nav-link-enhanced {% if request.endpoint == 'main.sessions' %}active{% endif %}">
-                        <i class="bi bi-activity"></i>
+                    <a href="{{ url_for('main.history') }}" class="nav-link-enhanced {% if request.endpoint == 'main.history' %}active{% endif %}">
+                        <i class="bi bi-clock-history"></i>
                         <span>Historial</span>
                     </a>
                     <a href="{{ url_for('main.profile') }}" class="nav-link-enhanced {% if request.endpoint == 'main.profile' %}active{% endif %}">

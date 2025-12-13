@@ -21,6 +21,9 @@ import time
 from collections import deque
 from typing import Dict, Any, Tuple, Optional
 
+# Importar instancia compartida de MediaPipe Pose (singleton)
+from app.core.pose_singleton import get_shared_pose
+
 # Inicializar MediaPipe Pose
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
@@ -58,11 +61,10 @@ class ShoulderProfileAnalyzer:
             processing_height: Alto para procesamiento de MediaPipe
             show_skeleton: Si mostrar el skeleton completo de MediaPipe
         """
-        self.pose = mp_pose.Pose(
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-            model_complexity=1  # CPU mode
-        )
+        # ⚡ OPTIMIZACIÓN: Usar instancia COMPARTIDA de MediaPipe Pose
+        # Antes: Cada analyzer creaba su Pose() → 22s por analyzer
+        # Ahora: TODOS comparten UNA instancia → 12s total, reutilización instantánea
+        self.pose = get_shared_pose()
         
         # Resolución de procesamiento
         self.processing_width = processing_width
@@ -101,12 +103,17 @@ class ShoulderProfileAnalyzer:
         # Estado de postura
         self.posture_valid = False
         self.landmarks_detected = False
+        
+        # Orientación real verificada
+        self.is_profile_position = False  # True solo si está realmente de perfil
+        self.orientation_quality = 0.0    # 0.0 - 1.0, qué tan bien posicionado está
     
     def calculate_extension_angle(
         self, 
         shoulder: Tuple[int, int], 
         elbow: Tuple[int, int], 
-        side: str
+        side: str,
+        orientation: str
     ) -> float:
         """
         Calcula el ángulo de flexión/extensión con eje vertical fijo
@@ -115,13 +122,18 @@ class ShoulderProfileAnalyzer:
         - Brazo FIJO: Eje vertical absoluto (0, 1)
         - Brazo MÓVIL: Línea del brazo (hombro → codo)
         - 0° = Brazo hacia abajo
-        - +ángulo = Flexión (adelante)
+        - +ángulo = Flexión (adelante/arriba)
         - -ángulo = Extensión (atrás)
+        
+        Lógica biomecánica:
+        - FLEXIÓN: Codo se aleja del cuerpo hacia adelante
+        - EXTENSIÓN: Codo va hacia atrás
         
         Args:
             shoulder: Coordenadas (x, y) del hombro
             elbow: Coordenadas (x, y) del codo
             side: 'left' o 'right'
+            orientation: 'mirando derecha' o 'mirando izquierda'
         
         Returns:
             float: Ángulo en grados (positivo=flexión, negativo=extensión)
@@ -140,26 +152,41 @@ class ShoulderProfileAnalyzer:
         dot_product = np.clip(dot_product, -1.0, 1.0)
         angle_magnitude = np.degrees(np.arccos(dot_product))
         
-        # Determinar dirección (producto cruz simplificado)
-        cross_product = -arm_vector[0]
+        # Determinar dirección según orientación de la persona
+        # Producto cruz 2D: positivo si codo está a la derecha del hombro
+        elbow_relative_x = elbow[0] - shoulder[0]
         
-        if side == 'left':
-            angle = angle_magnitude if cross_product > 0 else -angle_magnitude
+        # Lógica corregida considerando orientación
+        if "mirando derecha" in orientation.lower():
+            # Persona mirando derecha → Adelante es derecha (+x)
+            # FLEXIÓN: codo hacia la derecha (+x) → ángulo positivo
+            # EXTENSIÓN: codo hacia la izquierda (-x) → ángulo negativo
+            angle = angle_magnitude if elbow_relative_x > 0 else -angle_magnitude
         else:
-            angle = angle_magnitude if cross_product < 0 else -angle_magnitude
+            # Persona mirando izquierda → Adelante es izquierda (-x)
+            # FLEXIÓN: codo hacia la izquierda (-x) → ángulo positivo
+            # EXTENSIÓN: codo hacia la derecha (+x) → ángulo negativo
+            angle = angle_magnitude if elbow_relative_x < 0 else -angle_magnitude
         
         return float(angle)
     
     def detect_side(self, landmarks) -> Tuple[str, float, str]:
         """
-        Detecta qué lado del cuerpo está visible (vista de perfil)
+        Detecta qué lado del cuerpo se está ANALIZANDO (vista de perfil)
+        
+        LÓGICA (considerando que la cámara ve como espejo):
+        - La imagen de la webcam es como verte en un espejo
+        - Si en la imagen la nariz está a la DERECHA del centro → 
+          en realidad estás mirando a TU IZQUIERDA → lado DERECHO visible
+        - Si en la imagen la nariz está a la IZQUIERDA del centro → 
+          en realidad estás mirando a TU DERECHA → lado IZQUIERDO visible
         
         Args:
             landmarks: Lista de landmarks de MediaPipe
         
         Returns:
             tuple: (lado, confianza, orientación)
-                - lado: 'left' o 'right'
+                - lado: 'left' o 'right' (el lado del cuerpo visible hacia la cámara)
                 - confianza: float (0-1)
                 - orientación: str descripción de la orientación
         """
@@ -167,22 +194,106 @@ class ShoulderProfileAnalyzer:
         right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
         nose = landmarks[mp_pose.PoseLandmark.NOSE]
         
-        # Método: Solo visibilidad
         left_visibility = left_shoulder.visibility
         right_visibility = right_shoulder.visibility
         
         shoulder_center_x = (left_shoulder.x + right_shoulder.x) / 2
         
-        if left_visibility > right_visibility:
-            side = 'left'
-            confidence = left_visibility
-            orientation = "mirando izquierda" if nose.x < shoulder_center_x else "mirando derecha"
-        else:
+        # En la imagen (efecto espejo):
+        # nose.x > center → en imagen miras a la derecha → en realidad miras a TU izquierda
+        # nose.x < center → en imagen miras a la izquierda → en realidad miras a TU derecha
+        if nose.x > shoulder_center_x:
+            # En imagen: nariz a la derecha → Tú miras a TU izquierda
+            # → Tu lado DERECHO está hacia la cámara
             side = 'right'
-            confidence = right_visibility
-            orientation = "mirando derecha" if nose.x > shoulder_center_x else "mirando izquierda"
+            orientation = "mirando izquierda"
+            confidence = max(left_visibility, right_visibility)
+        else:
+            # En imagen: nariz a la izquierda → Tú miras a TU derecha
+            # → Tu lado IZQUIERDO está hacia la cámara
+            side = 'left'
+            orientation = "mirando derecha"
+            confidence = max(left_visibility, right_visibility)
         
         return side, float(confidence), orientation
+    
+    def verify_profile_position(self, landmarks) -> Tuple[bool, float, str]:
+        """
+        Verifica si la persona está REALMENTE en posición de perfil.
+        
+        Para estar en perfil:
+        - Los hombros deben estar alineados (diferencia X pequeña)
+        - Un hombro debe tener visibilidad significativamente mayor que el otro
+        - Las caderas también deben estar alineadas
+        
+        Args:
+            landmarks: Lista de landmarks de MediaPipe
+        
+        Returns:
+            tuple: (is_profile, quality, message)
+                - is_profile: True si está en perfil válido
+                - quality: float (0-1) calidad de la posición
+                - message: Mensaje descriptivo
+        """
+        left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
+        right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+        left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
+        right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
+        
+        # 1. Verificar diferencia de visibilidad entre hombros
+        # En perfil, un hombro debe ser mucho más visible que el otro
+        visibility_diff = abs(left_shoulder.visibility - right_shoulder.visibility)
+        
+        # 2. Verificar alineación de hombros (en perfil, están casi en la misma X)
+        shoulder_x_diff = abs(left_shoulder.x - right_shoulder.x)
+        
+        # 3. Verificar alineación de caderas
+        hip_x_diff = abs(left_hip.x - right_hip.x)
+        
+        # Umbrales RELAJADOS para considerar perfil válido
+        # En perfil real: hombros alineados verticalmente (diff X pequeña)
+        SHOULDER_ALIGNMENT_THRESHOLD = 0.25  # Más permisivo (era 0.20)
+        VISIBILITY_DIFF_THRESHOLD = 0.15     # Más permisivo (era 0.25)
+        HIP_ALIGNMENT_THRESHOLD = 0.25       # Más permisivo (era 0.20)
+        
+        # Calcular scores individuales
+        alignment_score = max(0, 1 - (shoulder_x_diff / SHOULDER_ALIGNMENT_THRESHOLD))
+        visibility_score = min(1, visibility_diff / VISIBILITY_DIFF_THRESHOLD)
+        hip_score = max(0, 1 - (hip_x_diff / HIP_ALIGNMENT_THRESHOLD))
+        
+        # Score total (promedio ponderado)
+        quality = (alignment_score * 0.4 + visibility_score * 0.3 + hip_score * 0.3)
+        
+        # Determinar si está en perfil - CRITERIO SIMPLIFICADO
+        # Solo verificamos alineación de hombros (el criterio más importante)
+        is_profile = shoulder_x_diff < SHOULDER_ALIGNMENT_THRESHOLD
+        
+        # DEBUG: Log cada ~30 frames para ver valores
+        if self.frame_count % 30 == 0:
+            print(f"[PROFILE_CHECK] shoulder_x_diff={shoulder_x_diff:.3f} (threshold={SHOULDER_ALIGNMENT_THRESHOLD}), "
+                  f"visibility_diff={visibility_diff:.3f}, is_profile={is_profile}, quality={quality:.2f}")
+        
+        # Generar mensaje descriptivo
+        if is_profile:
+            if quality > 0.8:
+                message = "Perfil excelente"
+            elif quality > 0.6:
+                message = "Perfil correcto"
+            else:
+                message = "Perfil aceptable"
+        else:
+            if shoulder_x_diff >= SHOULDER_ALIGNMENT_THRESHOLD:
+                message = "Gire más hacia un lado"
+            elif visibility_diff <= VISIBILITY_DIFF_THRESHOLD * 0.5:
+                message = "No se detecta perfil claro"
+            else:
+                message = "Ajuste su posición"
+        
+        # Actualizar estado interno
+        self.is_profile_position = is_profile
+        self.orientation_quality = quality
+        
+        return is_profile, quality, message
     
     def get_landmarks_2d(
         self, 
@@ -248,10 +359,25 @@ class ShoulderProfileAnalyzer:
             landmarks = results.pose_landmarks.landmark
             
             # Detectar lado visible
-            side, confidence, orientation = self.detect_side(landmarks)
-            self.side = "HOMBRO IZQUIERDO" if side == 'left' else "HOMBRO DERECHO"
-            self.orientation = orientation
-            self.confidence = confidence
+            side, detection_confidence, orientation = self.detect_side(landmarks)
+            self.side = side  # 'left' o 'right' (compatible con frontend)
+            
+            # ⚡ NUEVO: Verificar si realmente está en posición de perfil
+            is_profile, profile_quality, profile_message = self.verify_profile_position(landmarks)
+            
+            # Actualizar orientación con verificación real
+            if is_profile:
+                self.orientation = "profile"  # Usar "profile" cuando es válido
+                self.posture_valid = True
+            else:
+                self.orientation = "frontal"  # No está en perfil = está de frente
+                self.posture_valid = False
+            
+            # ⚠️ IMPORTANTE: Para DETECTING_PERSON usar solo la confianza de detección
+            # Para CHECKING_ORIENTATION se usará orientation_quality
+            # La confianza de detección NO debe depender de si está en perfil o no
+            self.confidence = detection_confidence  # Solo confianza de que hay persona
+            self.orientation_quality = profile_quality  # Calidad de perfil por separado
             
             # Dibujar skeleton solo si está habilitado
             if self.show_skeleton:
@@ -263,7 +389,7 @@ class ShoulderProfileAnalyzer:
                 )
             
             # Procesar vista de perfil
-            self._process_profile_view(image, landmarks, w, h, side, orientation, confidence)
+            self._process_profile_view(image, landmarks, w, h, side, self.orientation, detection_confidence)
         else:
             self.landmarks_detected = False
             self.posture_valid = False
@@ -287,8 +413,8 @@ class ShoulderProfileAnalyzer:
         self.fps_history.append(fps)
         self.last_time = current_time
         
-        # Mostrar métricas (opcional, puede deshabilitarse)
-        self._draw_performance_metrics(image, fps, processing_time)
+        # Mostrar métricas en video (DESHABILITADO - info ya visible en panel web)
+        # self._draw_performance_metrics(image, fps, processing_time)
         
         return image
     
@@ -321,8 +447,8 @@ class ShoulderProfileAnalyzer:
         elbow_2d = self.get_landmarks_2d(elbow, w, h)
         wrist_2d = self.get_landmarks_2d(wrist, w, h)
         
-        # Calcular ángulo de extensión/flexión
-        angle = self.calculate_extension_angle(shoulder_2d, elbow_2d, side)
+        # Calcular ángulo de extensión/flexión (pasando orientación)
+        angle = self.calculate_extension_angle(shoulder_2d, elbow_2d, side, orientation)
         
         # Actualizar estadísticas
         self.current_angle = angle
@@ -351,9 +477,11 @@ class ShoulderProfileAnalyzer:
         # Antebrazo
         cv2.line(image, elbow_2d, wrist_2d, self.color_cache['blue'], 2, cv2.LINE_4)
         
-        # Mostrar ángulo
-        angle_text = f"{abs(angle):.1f}°"
+        # Mostrar ángulo (usamos 'o' en lugar de '°' porque OpenCV no renderiza bien el símbolo)
+        angle_text = f"{abs(angle):.1f}"
         direction_text = "FLEX" if angle > 0 else "EXT" if angle < 0 else ""
+        
+        # Dibujar el número del ángulo
         cv2.putText(
             image, 
             angle_text, 
@@ -364,6 +492,20 @@ class ShoulderProfileAnalyzer:
             3, 
             cv2.LINE_4
         )
+        # Dibujar 'o' pequeña como símbolo de grados (simulando superíndice)
+        # Calculamos la posición después del número
+        (text_width, _), _ = cv2.getTextSize(angle_text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)
+        cv2.putText(
+            image,
+            "o",
+            (shoulder_2d[0] - 40 + text_width + 2, shoulder_2d[1] - 35),  # Posición elevada
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,  # Tamaño más pequeño
+            self.color_cache['yellow'],
+            2,
+            cv2.LINE_4
+        )
+        
         if direction_text:
             direction_color = self.color_cache['green'] if angle > 0 else self.color_cache['orange']
             cv2.putText(
@@ -377,8 +519,8 @@ class ShoulderProfileAnalyzer:
                 cv2.LINE_4
             )
         
-        # Panel de información
-        self._draw_info_panel(image, orientation, confidence, w, h)
+        # Panel de información en video (DESHABILITADO - info ya visible en panel web)
+        # self._draw_info_panel(image, orientation, confidence, w, h)
     
     def _draw_info_panel(
         self, 
@@ -530,10 +672,12 @@ class ShoulderProfileAnalyzer:
                 - angle: Ángulo actual (float)
                 - max_rom: ROM máximo alcanzado (float)
                 - side: Lado detectado (str)
-                - orientation: Orientación (str)
-                - confidence: Confianza de detección (float)
-                - posture_valid: Si la postura es válida (bool)
+                - orientation: Orientación real verificada (str) - 'profile' o 'frontal'
+                - confidence: Confianza combinada (detección + calidad posición) (float)
+                - posture_valid: Si la postura es válida para análisis (bool)
                 - landmarks_detected: Si se detectaron landmarks (bool)
+                - is_profile_position: Si está realmente en posición de perfil (bool)
+                - orientation_quality: Calidad de la orientación 0-1 (float)
                 - fps: FPS actual (float)
         """
         avg_fps = sum(self.fps_history) / len(self.fps_history) if self.fps_history else 0
@@ -542,10 +686,12 @@ class ShoulderProfileAnalyzer:
             'angle': round(self.current_angle, 2),
             'max_rom': round(self.max_angle, 2),
             'side': self.side,
-            'orientation': self.orientation,
+            'orientation': self.orientation,  # Ahora es 'profile' o 'frontal' verificado
             'confidence': round(self.confidence, 2),
             'posture_valid': self.posture_valid,
             'landmarks_detected': self.landmarks_detected,
+            'is_profile_position': self.is_profile_position,
+            'orientation_quality': round(self.orientation_quality, 2),
             'fps': round(avg_fps, 1),
             'frame_count': self.frame_count
         }
@@ -563,13 +709,20 @@ class ShoulderProfileAnalyzer:
         self.frame_count = 0
         self.posture_valid = False
         self.landmarks_detected = False
+        self.is_profile_position = False
+        self.orientation_quality = 0.0
     
     def cleanup(self):
         """
-        Libera recursos de MediaPipe
+        Libera recursos del analyzer
         
-        Llamar cuando ya no se necesite el analyzer
+        ⚠️ CRÍTICO: NO cierra MediaPipe Pose porque es COMPARTIDO (singleton)
+        La instancia singleton se mantiene viva en pose_singleton.py
+        Solo liberamos la referencia local y limpiamos datos del analyzer
         """
-        if self.pose:
-            self.pose.close()
-            self.pose = None
+        # Solo liberar referencia (NO cerrar - es singleton compartido)
+        self.pose = None
+        
+        # Limpiar datos locales para liberar memoria
+        self.fps_history.clear()
+        self.processing_times.clear()

@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Sujetos de Estudio - BioTrack{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="bi bi-people-fill text-primary me-2"></i>
+                        Sujetos de Estudio
+                    </h2>
+                    <p class="text-muted mb-0">
+                        {% if is_admin %}
+                        <span class="badge bg-info me-2"><i class="bi bi-shield-check"></i> Vista Administrador</span>
+                        Gestiona todos los sujetos registrados en el sistema
+                        {% else %}
+                        Gestiona los sujetos que has registrado para análisis biomecánico
+                        {% endif %}
+                    </p>
+                </div>
+                <a href="{{ url_for('main.subjects_new') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Nuevo Sujeto
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros (Solo para admin) -->
+    {% if is_admin and subjects|length > 5 %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-secondary border-secondary">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" 
+                                       id="searchSubject" placeholder="Buscar por nombre o código...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select form-select-sm bg-dark text-white border-secondary" id="filterCreator">
+                                <option value="">Todos los creadores</option>
+                                {% set creators = subjects | map(attribute='creator_name') | unique | list %}
+                                {% for creator in creators %}
+                                <option value="{{ creator }}">{{ creator }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <span class="badge bg-secondary">
+                                <i class="bi bi-people"></i> {{ subjects|length }} sujeto(s)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabla de Sujetos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body">
+                    {% if subjects and subjects|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle" id="subjectsTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Código</th>
+                                    <th scope="col">Nombre</th>
+                                    <th scope="col">Género</th>
+                                    <th scope="col">Altura</th>
+                                    <th scope="col">Nivel Actividad</th>
+                                    {% if is_admin %}
+                                    <th scope="col">Registrado por</th>
+                                    {% endif %}
+                                    <th scope="col">Fecha Registro</th>
+                                    <th scope="col" class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for subject in subjects %}
+                                <tr data-name="{{ subject.full_name|lower }}" 
+                                    data-code="{{ subject.subject_code|lower }}"
+                                    {% if is_admin %}data-creator="{{ subject.creator_name|default('') }}"{% endif %}>
+                                    <td>
+                                        <span class="badge bg-primary">{{ subject.subject_code }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ subject.full_name }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if subject.gender == 'M' %}
+                                            <i class="bi bi-gender-male text-info"></i> Masculino
+                                        {% elif subject.gender == 'F' %}
+                                            <i class="bi bi-gender-female text-danger"></i> Femenino
+                                        {% elif subject.gender == 'Other' %}
+                                            <i class="bi bi-gender-ambiguous text-secondary"></i> Otro
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if subject.height %}
+                                            {{ subject.height }} cm
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if subject.activity_level %}
+                                            <span class="badge 
+                                                {% if subject.activity_level == 'very_active' %}bg-success
+                                                {% elif subject.activity_level == 'active' %}bg-info
+                                                {% elif subject.activity_level == 'moderate' %}bg-warning text-dark
+                                                {% elif subject.activity_level == 'light' %}bg-secondary
+                                                {% else %}bg-dark{% endif %}">
+                                                {% if subject.activity_level == 'very_active' %}Muy Activo
+                                                {% elif subject.activity_level == 'active' %}Activo
+                                                {% elif subject.activity_level == 'moderate' %}Moderado
+                                                {% elif subject.activity_level == 'light' %}Ligero
+                                                {% elif subject.activity_level == 'sedentary' %}Sedentario
+                                                {% else %}{{ subject.activity_level }}{% endif %}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% if is_admin %}
+                                    <td>
+                                        <small class="text-info">
+                                            <i class="bi bi-person-circle me-1"></i>
+                                            {{ subject.creator_name|default('Desconocido') }}
+                                        </small>
+                                    </td>
+                                    {% endif %}
+                                    <td>
+                                        {% if subject.created_at %}
+                                            {{ subject.created_at[:10] }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('main.subjects_view', subject_id=subject.id) }}" 
+                                               class="btn btn-outline-info" title="Ver detalles">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('main.subjects_edit', subject_id=subject.id) }}" 
+                                               class="btn btn-outline-warning" title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    title="Eliminar"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteModal"
+                                                    data-subject-id="{{ subject.id }}"
+                                                    data-subject-name="{{ subject.full_name }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <!-- Estado vacío -->
+                    <div class="text-center py-5">
+                        <i class="bi bi-people display-1 text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay sujetos registrados</h4>
+                        <p class="text-muted mb-4">
+                            {% if is_admin %}
+                            No hay sujetos de estudio en el sistema todavía.
+                            {% else %}
+                            Aún no has registrado ningún sujeto de estudio.
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('main.subjects_new') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Registrar Primer Sujeto
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-danger">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title text-danger" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar al sujeto <strong id="deleteSubjectName"></strong>?</p>
+                <div class="alert alert-warning py-2">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Advertencia:</strong> Esta acción eliminará también todas las sesiones de análisis ROM asociadas a este sujeto.
+                </div>
+            </div>
+            <div class="modal-footer border-danger">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>
+                        Eliminar Sujeto
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Configurar modal de eliminación
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const subjectId = button.getAttribute('data-subject-id');
+                const subjectName = button.getAttribute('data-subject-name');
+                
+                document.getElementById('deleteSubjectName').textContent = subjectName;
+                document.getElementById('deleteForm').action = `/subjects/${subjectId}/delete`;
+            });
+        }
+        
+        // Filtrado de tabla (solo para admin)
+        const searchInput = document.getElementById('searchSubject');
+        const filterCreator = document.getElementById('filterCreator');
+        
+        function filterTable() {
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            const creatorFilter = filterCreator ? filterCreator.value : '';
+            const rows = document.querySelectorAll('#subjectsTable tbody tr');
+            
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name') || '';
+                const code = row.getAttribute('data-code') || '';
+                const creator = row.getAttribute('data-creator') || '';
+                
+                const matchesSearch = name.includes(searchTerm) || code.includes(searchTerm);
+                const matchesCreator = !creatorFilter || creator === creatorFilter;
+                
+                row.style.display = (matchesSearch && matchesCreator) ? '' : 'none';
+            });
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', filterTable);
+        }
+        if (filterCreator) {
+            filterCreator.addEventListener('change', filterTable);
+        }
+    });
+</script>
+{% endblock %}

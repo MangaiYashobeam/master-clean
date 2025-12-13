@@ -1,0 +1,613 @@
+<!--
+PANEL DE CONTROL DE PANEO - Web Bluetooth API
+Control simple de servo horizontal via BLE
+Conexion directa navegador - ESP32 (sin backend)
+-->
+
+<div class="pan-control-panel" id="panControlPanel">
+    <div class="pan-header">
+        <h5><i class="bi bi-arrows-horizontal"></i> Control de Paneo</h5>
+        <div class="bt-controls">
+            <span id="panBtStatus" class="bt-status disconnected">
+                <i class="bi bi-bluetooth"></i>
+                <span class="status-text">Desconectado</span>
+            </span>
+            <button type="button" 
+                    class="btn btn-bt-connect" 
+                    id="btnPanConnect"
+                    onclick="PanControl.toggleConnection()">
+                <i class="bi bi-bluetooth"></i>
+                <span>Conectar</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="pan-body">
+        <div class="slider-container">
+            <button type="button" 
+                    class="btn btn-pan-direction" 
+                    onclick="PanControl.moveLeft()"
+                    title="Izquierda">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            
+            <div class="slider-wrapper">
+                <input type="range" 
+                       id="panSlider" 
+                       class="pan-slider" 
+                       min="0" 
+                       max="180" 
+                       value="90"
+                       oninput="PanControl.onSliderInput(this.value)"
+                       onchange="PanControl.onSliderChange(this.value)">
+                <div class="slider-labels">
+                    <span>0</span>
+                    <span class="center-label">90</span>
+                    <span>180</span>
+                </div>
+            </div>
+            
+            <button type="button" 
+                    class="btn btn-pan-direction" 
+                    onclick="PanControl.moveRight()"
+                    title="Derecha">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        
+        <div class="angle-display">
+            <span class="angle-value" id="panAngleDisplay">90</span>
+            <span class="angle-unit">deg</span>
+        </div>
+        
+        <button type="button" 
+                class="btn btn-center" 
+                onclick="PanControl.center()"
+                title="Centrar servo a 90">
+            <i class="bi bi-bullseye"></i> Centro
+        </button>
+    </div>
+</div>
+
+<style>
+.pan-control-panel {
+    background: linear-gradient(135deg, rgba(0, 20, 40, 0.9) 0%, rgba(0, 40, 60, 0.85) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.pan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.pan-header h5 {
+    color: var(--biomech-cyan, #00d4ff);
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.bt-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bt-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.bt-status.disconnected {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.bt-status.connecting {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.bt-status.connected {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.btn-bt-connect {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-bt-connect:hover {
+    background: rgba(59, 130, 246, 0.35);
+    color: white;
+}
+
+.btn-bt-connect.connected {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn-pan-direction {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 212, 255, 0.15);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: var(--biomech-cyan, #00d4ff);
+    border-radius: 50%;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-pan-direction:hover {
+    background: rgba(0, 212, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.btn-pan-direction:active {
+    transform: scale(0.95);
+}
+
+.slider-wrapper {
+    flex: 1;
+}
+
+.pan-slider {
+    width: 100%;
+    height: 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+}
+
+.pan-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
+    transition: transform 0.1s ease;
+}
+
+.pan-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+.pan-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
+}
+
+.slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.3rem;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.slider-labels .center-label {
+    color: rgba(0, 212, 255, 0.6);
+}
+
+.angle-display {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.angle-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--biomech-cyan, #00d4ff);
+}
+
+.angle-unit {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-center {
+    width: 100%;
+    padding: 0.5rem;
+    background: rgba(107, 114, 128, 0.2);
+    border: 1px solid rgba(107, 114, 128, 0.4);
+    color: #9ca3af;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+}
+
+.btn-center:hover {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: rgba(0, 212, 255, 0.4);
+    color: var(--biomech-cyan, #00d4ff);
+}
+
+@media (max-width: 400px) {
+    .pan-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+    .bt-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+</style>
+
+<script>
+var PanControl = {
+    SERVICE_UUID: '4fafc201-1fb5-459e-8fcc-c5c9c331914b',
+    CHARACTERISTIC_UUID: 'beb5483e-36e1-4688-b7f5-ea07361b26a8',
+    STORAGE_KEY: 'biotrack_pan_state',
+    
+    device: null,
+    characteristic: null,
+    isConnected: false,
+    currentAngle: 90,
+    sliderTimeout: null,
+    hadPreviousConnection: false,
+    
+    elements: {
+        status: null,
+        connectBtn: null,
+        slider: null,
+        angleDisplay: null
+    },
+    
+    init: function() {
+        this.elements.status = document.getElementById('panBtStatus');
+        this.elements.connectBtn = document.getElementById('btnPanConnect');
+        this.elements.slider = document.getElementById('panSlider');
+        this.elements.angleDisplay = document.getElementById('panAngleDisplay');
+        
+        if (!navigator.bluetooth) {
+            console.warn('[PanControl] Web Bluetooth no soportada');
+            this.updateUI('unsupported');
+            return;
+        }
+        
+        // Cargar estado guardado
+        this.loadState();
+        
+        // Si habia conexion previa, intentar reconectar automaticamente
+        if (this.hadPreviousConnection) {
+            this.tryAutoReconnect();
+        }
+    },
+    
+    saveState: function() {
+        var state = {
+            wasConnected: this.isConnected,
+            angle: this.currentAngle,
+            timestamp: Date.now()
+        };
+        try {
+            sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+        } catch(e) {}
+    },
+    
+    loadState: function() {
+        try {
+            var saved = sessionStorage.getItem(this.STORAGE_KEY);
+            if (saved) {
+                var state = JSON.parse(saved);
+                if (state.angle !== undefined) {
+                    this.currentAngle = state.angle;
+                    this.updateAngleDisplay(state.angle);
+                }
+                if (state.wasConnected) {
+                    this.hadPreviousConnection = true;
+                }
+            }
+        } catch(e) {}
+    },
+    
+    tryAutoReconnect: function() {
+        var self = this;
+        
+        // Verificar si getDevices esta disponible
+        if (!navigator.bluetooth.getDevices) {
+            console.log('[PanControl] getDevices no disponible');
+            this.updateUI('disconnected');
+            return;
+        }
+        
+        this.updateUI('connecting');
+        console.log('[PanControl] Buscando dispositivo guardado...');
+        
+        navigator.bluetooth.getDevices()
+            .then(function(devices) {
+                console.log('[PanControl] Dispositivos en cache:', devices.length);
+                
+                var targetDevice = null;
+                for (var i = 0; i < devices.length; i++) {
+                    console.log('[PanControl] - ' + devices[i].name);
+                    if (devices[i].name === 'BIOTRACK-PAN') {
+                        targetDevice = devices[i];
+                        break;
+                    }
+                }
+                
+                if (!targetDevice) {
+                    console.log('[PanControl] BIOTRACK-PAN no encontrado en cache');
+                    self.updateUI('disconnected');
+                    return Promise.reject('not_found');
+                }
+                
+                return self.connectToDevice(targetDevice);
+            })
+            .catch(function(error) {
+                console.log('[PanControl] Reconexion automatica no disponible:', error);
+                self.updateUI('disconnected');
+            });
+    },
+    
+    connectToDevice: function(device) {
+        var self = this;
+        
+        this.device = device;
+        
+        // Listener de desconexion
+        device.addEventListener('gattserverdisconnected', function() {
+            console.log('[PanControl] Desconectado por el dispositivo');
+            self.isConnected = false;
+            self.saveState();
+            self.updateUI('disconnected');
+        });
+        
+        console.log('[PanControl] Conectando a GATT...');
+        
+        return device.gatt.connect()
+            .then(function(server) {
+                console.log('[PanControl] Obteniendo servicio...');
+                return server.getPrimaryService(self.SERVICE_UUID);
+            })
+            .then(function(service) {
+                console.log('[PanControl] Obteniendo caracteristica...');
+                return service.getCharacteristic(self.CHARACTERISTIC_UUID);
+            })
+            .then(function(characteristic) {
+                self.characteristic = characteristic;
+                return characteristic.startNotifications();
+            })
+            .then(function() {
+                self.characteristic.addEventListener('characteristicvaluechanged', function(event) {
+                    self.handleNotification(event);
+                });
+                
+                self.isConnected = true;
+                self.saveState();
+                self.updateUI('connected');
+                console.log('[PanControl] Conectado exitosamente');
+                
+                setTimeout(function() { self.sendCommand('S'); }, 300);
+            });
+    },
+    
+    toggleConnection: function() {
+        if (this.isConnected) {
+            this.disconnect();
+        } else {
+            this.connect();
+        }
+    },
+    
+    connect: function() {
+        var self = this;
+        
+        if (!navigator.bluetooth) {
+            alert('Tu navegador no soporta Web Bluetooth.\nUsa Chrome en Windows/Mac/Android.');
+            return;
+        }
+        
+        this.updateUI('connecting');
+        
+        // Primero intentar con getDevices (sin dialogo)
+        if (navigator.bluetooth.getDevices && this.hadPreviousConnection) {
+            navigator.bluetooth.getDevices()
+                .then(function(devices) {
+                    for (var i = 0; i < devices.length; i++) {
+                        if (devices[i].name === 'BIOTRACK-PAN') {
+                            console.log('[PanControl] Reconectando sin dialogo...');
+                            return self.connectToDevice(devices[i]);
+                        }
+                    }
+                    // No encontrado, usar metodo normal
+                    return self.connectWithDialog();
+                })
+                .catch(function(error) {
+                    console.log('[PanControl] getDevices fallo, usando dialogo:', error);
+                    self.connectWithDialog();
+                });
+        } else {
+            this.connectWithDialog();
+        }
+    },
+    
+    connectWithDialog: function() {
+        var self = this;
+        
+        navigator.bluetooth.requestDevice({
+            filters: [{ name: 'BIOTRACK-PAN' }],
+            optionalServices: [this.SERVICE_UUID]
+        })
+        .then(function(device) {
+            return self.connectToDevice(device);
+        })
+        .catch(function(error) {
+            if (error.name !== 'NotFoundError') {
+                console.error('[PanControl] Error:', error);
+            }
+            self.updateUI('disconnected');
+        });
+    },
+    
+    disconnect: function() {
+        if (this.device && this.device.gatt && this.device.gatt.connected) {
+            this.device.gatt.disconnect();
+        }
+        this.isConnected = false;
+        this.hadPreviousConnection = false;
+        var state = { wasConnected: false, angle: this.currentAngle, timestamp: Date.now() };
+        try { sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+        this.updateUI('disconnected');
+    },
+    
+    handleNotification: function(event) {
+        var decoder = new TextDecoder();
+        var value = decoder.decode(event.target.value);
+        console.log('[PanControl] Recibido:', value);
+        
+        if (value.indexOf('OK:') === 0) {
+            var angle = parseInt(value.substring(3));
+            if (!isNaN(angle)) {
+                this.currentAngle = angle;
+                this.updateAngleDisplay(angle);
+                this.saveState();
+            }
+        }
+    },
+    
+    sendCommand: function(cmd) {
+        var self = this;
+        if (!this.isConnected || !this.characteristic) {
+            console.warn('[PanControl] No conectado');
+            return;
+        }
+        
+        var encoder = new TextEncoder();
+        this.characteristic.writeValue(encoder.encode(cmd))
+            .then(function() {
+                console.log('[PanControl] Enviado:', cmd);
+            })
+            .catch(function(error) {
+                console.error('[PanControl] Error enviando:', error);
+            });
+    },
+    
+    onSliderInput: function(value) {
+        this.updateAngleDisplay(value);
+    },
+    
+    onSliderChange: function(value) {
+        var self = this;
+        clearTimeout(this.sliderTimeout);
+        this.sliderTimeout = setTimeout(function() {
+            var angle = parseInt(value);
+            var cmd = 'P' + String(angle).padStart(3, '0');
+            self.sendCommand(cmd);
+        }, 50);
+    },
+    
+    moveLeft: function() {
+        this.sendCommand('L');
+    },
+    
+    moveRight: function() {
+        this.sendCommand('R');
+    },
+    
+    center: function() {
+        this.sendCommand('C');
+        if (this.elements.slider) {
+            this.elements.slider.value = 90;
+        }
+        this.updateAngleDisplay(90);
+    },
+    
+    updateUI: function(state) {
+        var status = this.elements.status;
+        var connectBtn = this.elements.connectBtn;
+        if (!status || !connectBtn) return;
+        
+        var statusText = status.querySelector('.status-text');
+        var btnSpan = connectBtn.querySelector('span');
+        
+        if (state === 'connecting') {
+            status.className = 'bt-status connecting';
+            statusText.textContent = 'Conectando...';
+            connectBtn.disabled = true;
+        } else if (state === 'connected') {
+            status.className = 'bt-status connected';
+            statusText.textContent = 'Conectado';
+            connectBtn.className = 'btn btn-bt-connect connected';
+            btnSpan.textContent = 'Desconectar';
+            connectBtn.disabled = false;
+        } else if (state === 'disconnected') {
+            status.className = 'bt-status disconnected';
+            statusText.textContent = 'Desconectado';
+            connectBtn.className = 'btn btn-bt-connect';
+            btnSpan.textContent = 'Conectar';
+            connectBtn.disabled = false;
+        } else if (state === 'unsupported') {
+            status.className = 'bt-status disconnected';
+            statusText.textContent = 'No soportado';
+            connectBtn.disabled = true;
+        }
+    },
+    
+    updateAngleDisplay: function(angle) {
+        if (this.elements.angleDisplay) {
+            this.elements.angleDisplay.textContent = angle;
+        }
+        if (this.elements.slider && this.elements.slider.value != angle) {
+            this.elements.slider.value = angle;
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() { 
+    PanControl.init(); 
+});
+</script>

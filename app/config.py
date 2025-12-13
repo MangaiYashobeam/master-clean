@@ -138,12 +138,38 @@ class Config:
     # CONFIGURACIÓN DE CÁMARA
     # ========================================================================
     
-    # Resolución de cámara por defecto
+    # Índice de cámara por defecto (0=integrada, 1+=externa)
+    CAMERA_INDEX = 0
+    
+    # Resolución de cámara por defecto (para adquisición)
     CAMERA_WIDTH = 1280
     CAMERA_HEIGHT = 720
     
+    # Resolución de procesamiento (para análisis - menor = más rápido)
+    CAMERA_PROCESSING_WIDTH = 960
+    CAMERA_PROCESSING_HEIGHT = 540
+    
     # FPS objetivo
     CAMERA_FPS = 30
+    
+    # Calidad JPEG para streaming (1-100, menor = más rápido, menos calidad)
+    JPEG_QUALITY = 60
+    
+    # Resoluciones disponibles para selección
+    AVAILABLE_RESOLUTIONS = [
+        {'label': '480p (SD)', 'width': 854, 'height': 480},
+        {'label': '540p', 'width': 960, 'height': 540},
+        {'label': '720p (HD)', 'width': 1280, 'height': 720},
+        {'label': '1080p (Full HD)', 'width': 1920, 'height': 1080},
+    ]
+    
+    # Calidades JPEG disponibles
+    AVAILABLE_JPEG_QUALITIES = [
+        {'label': 'Bajo (rápido)', 'value': 40},
+        {'label': 'Medio', 'value': 60},
+        {'label': 'Alto', 'value': 80},
+        {'label': 'Máximo', 'value': 95},
+    ]
     
     # ========================================================================
     # CONFIGURACIÓN DE ESP32 (Control de altura de cámara)

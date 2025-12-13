@@ -1680,8 +1680,8 @@
         "mobility": "Uniaxial - Flexión plantar y dorsiflexión"
       },
       "exercises": {
-        "flexion": {
-          "name": "Flexión Plantar",
+        "plantarflexion": {
+          "name": "Plantiflexión",
           "description": "Movimiento del pie hacia abajo (punta hacia el suelo)",
           "plane": "sagital",
           "movement_type": "flexion_extension",
@@ -1693,8 +1693,8 @@
             "visual_countdown_duration": 15,
             "relaxation_buffer": 1
           },
-          "normal_range": {"min": 40, "max": 90},
-          "optimal_range": {"min": 60, "max": 85},
+          "normal_range": {"min": 0, "max": 50},
+          "optimal_range": {"min": 40, "max": 50},
           "calculation_method": "ankle_plantar_flexion",
           "required_landmarks": [25, 26, 27, 28, 31, 32],
           "primary_side": "bilateral",
@@ -1761,8 +1761,8 @@
             "visual_countdown_duration": 15,
             "relaxation_buffer": 1
           },
-          "normal_range": {"min": 90, "max": 110},
-          "optimal_range": {"min": 100, "max": 110},
+          "normal_range": {"min": 0, "max": 20},
+          "optimal_range": {"min": 15, "max": 20},
           "calculation_method": "ankle_dorsiflexion",
           "required_landmarks": [25, 26, 27, 28, 31, 32],
           "primary_side": "bilateral",

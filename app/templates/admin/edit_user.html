@@ -7,9 +7,9 @@
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}" class="text-biomech-cyan">Admin</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}" class="text-biomech-cyan">Usuarios</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_user_detail', user_id=user.id) }}" class="text-biomech-cyan">{{ user.username }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}" class="text-biomech-cyan">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.users') }}" class="text-biomech-cyan">Usuarios</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.user_detail', user_id=user.id) }}" class="text-biomech-cyan">{{ user.username }}</a></li>
             <li class="breadcrumb-item active">Editar</li>
         </ol>
     </nav>
@@ -24,7 +24,7 @@
                 Modificar información de <strong class="text-biomech-cyan">{{ user.username }}</strong>
             </p>
         </div>
-        <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('main.user_detail', user_id=user.id) }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Volver
         </a>
     </div>
@@ -184,7 +184,7 @@
                 <button type="submit" class="btn btn-success btn-lg">
                     <i class="bi bi-check-circle"></i> Guardar Cambios
                 </button>
-                <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" class="btn btn-outline-secondary btn-lg ms-2">
+                <a href="{{ url_for('main.user_detail', user_id=user.id) }}" class="btn btn-outline-secondary btn-lg ms-2">
                     <i class="bi bi-x-circle"></i> Cancelar
                 </a>
             </div>

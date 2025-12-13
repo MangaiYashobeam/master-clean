@@ -20,6 +20,39 @@ import sys
 from pathlib import Path
 
 # ==============================================================================
+# VERIFICACIÓN DE DEPENDENCIAS CRÍTICAS
+# ==============================================================================
+
+def check_pyserial():
+    """Verifica que pyserial esté instalado (necesario para Arduino)"""
+    try:
+        import serial
+        return True
+    except ImportError:
+        print("="*70)
+        print("⚠️  ADVERTENCIA: pyserial no está instalado")
+        print("="*70)
+        print(f"   Python en uso: {sys.executable}")
+        print()
+        print("   Para instalar pyserial, ejecuta:")
+        print(f'   "{sys.executable}" -m pip install pyserial')
+        print()
+        print("   O usa Anaconda si ya lo tienes instalado ahí:")
+        print('   "C:/Users/mariz/anaconda3/python.exe" run.py')
+        print("="*70)
+        return False
+
+# Verificar pyserial al inicio
+if not check_pyserial():
+    print()
+    response = input("¿Deseas continuar sin soporte para Arduino? (s/N): ")
+    if response.lower() != 's':
+        print("Saliendo...")
+        sys.exit(1)
+    print("Continuando sin soporte para Arduino...")
+    print()
+
+# ==============================================================================
 # CONFIGURACIÓN DE PATHS
 # ==============================================================================
 

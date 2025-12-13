@@ -4,153 +4,326 @@
 
 {% block content %}
 <div class="live-analysis-container fade-in">
-    <!-- 📊 GRID PRINCIPAL: VIDEO + PANEL LATERAL -->
-    <div class="row g-4">
-        <!-- 🎥 COLUMNA DE VIDEO (70%) -->
-        <div class="col-lg-8">
-            <div class="video-section">
-                <!-- Header del ejercicio -->
-                <div class="exercise-header-bar">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3 class="mb-0">
-                                <i class="bi bi-activity"></i>
-                                {{ exercise_name }}
-                            </h3>
-                            <small class="text-muted">{{ exercise_description }}</small>
+    <!-- 🎯 INDICADOR DE TIPO DE ANÁLISIS (Sujeto vs Auto-análisis) -->
+    {% if analysis_subject_id %}
+    <div class="analysis-target-banner subject-analysis">
+        <div class="banner-content">
+            <i class="bi bi-person-check-fill me-2"></i>
+            <span>Analizando a: <strong>{{ analysis_subject_name }}</strong></span>
+            <span class="badge bg-info ms-2">Análisis de Sujeto</span>
+            <a href="{{ url_for('main.subjects_view', subject_id=analysis_subject_id) }}" 
+               class="btn btn-sm btn-outline-light ms-3" title="Ver perfil del sujeto">
+                <i class="bi bi-eye"></i> Ver Sujeto
+            </a>
+            <a href="{{ url_for('main.segments') }}" 
+               class="btn btn-sm btn-outline-warning ms-2" title="Cambiar a auto-análisis">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="analysis-target-banner self-analysis">
+        <div class="banner-content">
+            <i class="bi bi-person-fill me-2"></i>
+            <span><strong>Auto-análisis</strong> - Los resultados se guardarán en tu historial personal</span>
+            <span class="badge bg-success ms-2">Mi Análisis</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 📊 SECCIÓN PRINCIPAL: VIDEO + DATOS EN TIEMPO REAL (lado a lado) -->
+    <div class="main-analysis-row">
+        <!-- 🎥 COLUMNA DE VIDEO -->
+        <div class="video-column">
+            <!-- Header del ejercicio con dropdown de navegación -->
+            <div class="exercise-header-bar">
+                <div class="header-content">
+                    <div class="header-title">
+                        <!-- Dropdown de ejercicios -->
+                        <div class="exercise-dropdown-container">
+                            <button class="exercise-dropdown-btn" onclick="toggleExerciseDropdown()" id="exerciseDropdownBtn">
+                                <i class="bi bi-camera-video-fill me-2"></i>
+                                <span>{{ exercise_name }}</span>
+                                <i class="bi bi-chevron-down ms-2 dropdown-arrow"></i>
+                            </button>
+                            
+                            <!-- Menú dropdown -->
+                            <div class="exercise-dropdown-menu" id="exerciseDropdownMenu">
+                                {% for segment in all_exercises_menu %}
+                                <div class="dropdown-segment">
+                                    <div class="dropdown-segment-title">
+                                        <i class="bi bi-diagram-3"></i> {{ segment.name }}
+                                    </div>
+                                    {% for ex in segment.exercises %}
+                                    <a href="#" 
+                                       class="dropdown-exercise-item {% if ex.is_current %}current{% endif %}"
+                                       onclick="changeExercise('{{ segment.key }}', '{{ ex.key }}'); return false;"
+                                       {% if ex.is_current %}aria-current="true"{% endif %}>
+                                        <span class="exercise-item-name">{{ ex.name }}</span>
+                                        <span class="exercise-item-view">{{ ex.view }}</span>
+                                        {% if ex.is_current %}<i class="bi bi-check-lg current-check"></i>{% endif %}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
-                        <div class="view-badge">
-                            <i class="bi bi-camera"></i>
-                            Vista: <strong>{{ camera_view_label }}</strong>
-                        </div>
+                        <small class="header-description">{{ exercise_description }}</small>
+                    </div>
+                    <div class="view-badge">
+                        <i class="bi bi-eye-fill me-1"></i>
+                        Vista: <strong>{{ camera_view_label }}</strong>
                     </div>
                 </div>
+            </div>
 
-                <!-- Video Feed -->
+            <!-- Video Feed -->
+            <div class="video-section">
                 <div class="video-wrapper" id="videoWrapper">
-                    <video id="clientVideo"
-                           class="video-stream client-video hidden"
-                           autoplay
-                           playsinline
-                           muted>
-                    </video>
-
                     <img id="videoFeed" 
-                         src="{{ url_for('api.video_feed') }}" 
+                         src="{{ url_for('api.video_feed', camera=camera_index) }}" 
                          alt="Video en vivo"
-                         class="video-stream server-video">
+                         class="video-stream"
+                         data-camera-index="{{ camera_index }}"
+                         data-subject-id="{{ analysis_subject_id or '' }}"
+                         data-subject-name="{{ analysis_subject_name or '' }}">
                     
-                    <div id="clientCameraHint" class="video-overlay hint hidden">
-                        <i class="bi bi-camera-video"></i>
-                        <p class="mt-2 mb-0">Permite el acceso a la cámara cuando el navegador lo solicite.</p>
-                        <small class="text-light">La imagen se mostrará aquí inmediatamente.</small>
-                    </div>
-
                     <!-- Overlay de carga -->
                     <div id="loadingOverlay" class="video-overlay loading">
-                        <div class="spinner-border text-primary" role="status">
+                        <div class="spinner-border text-light mb-3" role="status">
                             <span class="visually-hidden">Cargando...</span>
                         </div>
-                        <p class="mt-2" id="loadingMessageText">Iniciando cámara...</p>
+                        <h5>Inicializando cámara...</h5>
+                        <p id="loadingText" class="text-muted small">Esto puede tomar unos segundos</p>
                     </div>
                 </div>
+            </div>
 
-                <!-- Controles de video -->
-                <div class="video-controls mt-3">
-                    <button id="startBtn" class="btn btn-success btn-lg" onclick="startAnalysis()">
-                        <i class="bi bi-play-fill"></i> Iniciar Análisis
-                    </button>
-                    <button id="stopBtn" class="btn btn-danger btn-lg" onclick="stopAnalysis()" disabled>
-                        <i class="bi bi-stop-fill"></i> Detener
-                    </button>
-                    <button id="resetBtn" class="btn btn-warning btn-lg" onclick="resetROM()">
-                        <i class="bi bi-arrow-clockwise"></i> Reiniciar ROM
-                    </button>
-                    <a href="{{ url_for('main.segment_exercises', segment_type=segment_type) }}" 
-                       class="btn btn-secondary btn-lg">
-                        <i class="bi bi-arrow-left"></i> Volver
-                    </a>
-                </div>
+            <!-- Controles de video -->
+            <div class="video-controls">
+                <button id="startBtn" class="btn btn-success" onclick="startAnalysis()" 
+                        title="Resetea ROM y marca el inicio de la sesión oficial">
+                    <i class="bi bi-play-fill"></i> Iniciar
+                </button>
+                <button id="stopBtn" class="btn btn-danger" onclick="stopAnalysis()" disabled>
+                    <i class="bi bi-stop-fill"></i> Detener
+                </button>
+                <button id="resetBtn" class="btn btn-warning" onclick="resetROM()">
+                    <i class="bi bi-arrow-clockwise"></i> Reset ROM
+                </button>
+                <button id="audioBtn" class="btn btn-info" onclick="toggleAudio()" title="Activar/Desactivar guía de voz">
+                    <i class="bi bi-volume-up-fill" id="audioIcon"></i> Audio
+                </button>
+                <button id="fullscreenBtn" class="btn btn-info" onclick="toggleFullscreen()">
+                    <i class="bi bi-arrows-fullscreen"></i> Pantalla Completa
+                </button>
+                <button id="configBtn" class="btn btn-secondary" onclick="openCameraConfig()" 
+                        title="Configurar cámara, resolución y calidad">
+                    <i class="bi bi-gear"></i> Configuración
+                </button>
+                <button onclick="navigateBack()" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </button>
             </div>
         </div>
 
-        <!-- 📋 COLUMNA DE INFORMACIÓN (30%) -->
-        <div class="col-lg-4">
-            <!-- Card de datos en tiempo real -->
-            <div class="info-card mb-3">
-                <h4 class="info-card-title">
+        <!-- 📊 PANEL LATERAL: SOLO DATOS EN TIEMPO REAL -->
+        <div class="realtime-panel">
+            <div class="info-card">
+                <div class="info-card-header">
                     <i class="bi bi-graph-up"></i>
-                    Datos en Tiempo Real
-                </h4>
+                    <span>Datos en Tiempo Real</span>
+                </div>
                 
-                <div class="metrics-display">
-                    <!-- Ángulo actual -->
-                    <div class="metric-item primary">
-                        <div class="metric-label">Ángulo Actual</div>
+                <div class="metrics-grid">
+                    <!-- Ángulo Actual -->
+                    <div class="metric-box primary">
+                        <div class="metric-label">ÁNGULO ACTUAL</div>
                         <div class="metric-value" id="currentAngle">0°</div>
+                        <div class="metric-side" id="currentSide"></div>
                     </div>
                     
                     <!-- ROM Máximo -->
-                    <div class="metric-item success">
-                        <div class="metric-label">ROM Máximo</div>
+                    <div class="metric-box success">
+                        <div class="metric-label">ROM MÁXIMO</div>
                         <div class="metric-value" id="maxROM">0°</div>
                     </div>
                     
-                    <!-- Estado de postura -->
-                    <div class="metric-item info">
-                        <div class="metric-label">Estado de Postura</div>
+                    <!-- Estado de Postura -->
+                    <div class="metric-box wide info-status">
+                        <div class="metric-label">ESTADO DE POSTURA</div>
                         <div class="metric-status" id="postureStatus">
                             <i class="bi bi-hourglass-split"></i>
                             <span>Detectando...</span>
                         </div>
                     </div>
                     
-                    <!-- FPS (opcional, para debug) -->
-                    <div class="metric-item secondary">
+                    <!-- FPS -->
+                    <div class="metric-box secondary">
                         <div class="metric-label">FPS</div>
                         <div class="metric-value small" id="fpsDisplay">0</div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Card de instrucciones -->
-            <div class="info-card mb-3">
-                <h4 class="info-card-title">
-                    <i class="bi bi-list-check"></i>
-                    Instrucciones
-                </h4>
-                <ol class="instructions-list">
-                    {% for instruction in instructions %}
-                    <li>{{ instruction }}</li>
-                    {% endfor %}
-                </ol>
+    <!-- 📋 SECCIÓN SECUNDARIA: GRÁFICO, RANGOS E INSTRUCCIONES (debajo) -->
+    <div class="secondary-info-row">
+        <!-- Card: Gráfico de Progreso ROM -->
+        <div class="info-card">
+            <div class="info-card-header">
+                <i class="bi bi-bar-chart-line"></i>
+                <span>Progreso ROM</span>
             </div>
-
-            <!-- Card de configuración -->
-            <div class="info-card mb-3">
-                <h4 class="info-card-title">
-                    <i class="bi bi-gear"></i>
-                    Configuración de Cámara
-                </h4>
-                <ul class="setup-list">
-                    {% for setup_item in setup %}
-                    <li>
-                        <i class="bi bi-check-circle"></i>
-                        {{ setup_item }}
-                    </li>
-                    {% endfor %}
-                </ul>
+            <div class="rom-chart-container">
+                <canvas id="romChart"></canvas>
             </div>
+        </div>
 
-            <!-- Gráfico de ROM (opcional - implementar después) -->
-            <div class="info-card">
-                <h4 class="info-card-title">
-                    <i class="bi bi-bar-chart-line"></i>
-                    Progreso ROM
-                </h4>
-                <div class="rom-chart-container">
-                    <canvas id="romChart" width="300" height="200"></canvas>
+        <!-- Card: Clasificación ROM (con bibliografía) -->
+        <div class="info-card rom-classification-card">
+            <div class="info-card-header">
+                <i class="bi bi-clipboard2-pulse"></i>
+                <span>Clasificación ROM</span>
+            </div>
+            
+            {% if rom_info %}
+            <!-- Rango Normal -->
+            <div class="rom-normal-range">
+                <div class="range-header">
+                    <i class="bi bi-rulers"></i>
+                    <span>Rango Normal: <strong>{{ rom_info.normal_range.min }}° - {{ rom_info.normal_range.max }}°</strong></span>
                 </div>
+            </div>
+            
+            <!-- Escala de Clasificación -->
+            <div class="classification-scale">
+                {% for level, data in rom_info.classification.items() %}
+                <div class="classification-item" style="border-left: 4px solid {{ data.color }};">
+                    <div class="classification-level" style="color: {{ data.color }};">
+                        {{ level|replace('_', ' ')|title }}
+                    </div>
+                    <div class="classification-range">
+                        {{ data.min }}° - {{ data.max }}° <span class="percentage">({{ data.percentage }})</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Fallback si no hay rom_info -->
+            <ul class="range-list">
+                <li>
+                    <span class="range-label">Mínimo esperado:</span>
+                    <span class="range-value">{{ min_angle }}°</span>
+                </li>
+                <li>
+                    <span class="range-label">Máximo esperado:</span>
+                    <span class="range-value">{{ max_angle }}°</span>
+                </li>
+            </ul>
+            {% endif %}
+        </div>
+
+        <!-- Card: Historial Reciente -->
+        <div class="info-card" id="recentHistoryPanel">
+            <div class="info-card-header">
+                <i class="bi bi-clock-history"></i>
+                {% if analysis_subject_id %}
+                    <span>Historial de {{ analysis_subject_name.split(' ')[0] if analysis_subject_name else 'Sujeto' }}</span>
+                {% else %}
+                    <span>Tu Historial</span>
+                {% endif %}
+            </div>
+            <div class="history-list" style="flex: 1; overflow-y: auto; padding: 8px;">
+                <!-- Se llena dinámicamente con JavaScript -->
+                <div class="text-center text-muted py-3" id="historyLoading">
+                    <i class="bi bi-hourglass-split"></i>
+                    <small>Cargando historial...</small>
+                </div>
+                <div id="historyEmpty" class="text-center text-muted py-3" style="display: none;">
+                    <i class="bi bi-inbox"></i>
+                    <small>No hay análisis previos para este ejercicio</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ⚙️ MODAL DE CONFIGURACIÓN DE CÁMARA -->
+<div id="cameraConfigModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-gear-fill me-2"></i>
+                    Configuración de Cámara
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Alerta de sesión activa -->
+                <div id="configSessionWarning" class="alert alert-warning d-none">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Sesión activa:</strong> Solo se puede cambiar la calidad JPEG. 
+                    Para cambiar cámara o resolución, detén la sesión primero.
+                </div>
+                
+                <!-- Selector de Cámara -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-camera-video me-1"></i> Cámara
+                    </label>
+                    <select id="cameraSelect" class="form-select">
+                        <option value="0">Cargando cámaras...</option>
+                    </select>
+                    <small class="text-muted">Selecciona la cámara a utilizar</small>
+                </div>
+                
+                <!-- Selector de Resolución -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-aspect-ratio me-1"></i> Resolución
+                    </label>
+                    <select id="resolutionSelect" class="form-select">
+                        <option value="854x480">480p (SD) - Más rápido</option>
+                        <option value="960x540" selected>540p - Recomendado</option>
+                        <option value="1280x720">720p (HD)</option>
+                        <option value="1920x1080">1080p (Full HD) - Más lento</option>
+                    </select>
+                    <small class="text-muted">Mayor resolución = mejor calidad pero más lento</small>
+                </div>
+                
+                <!-- Slider de Calidad JPEG -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-image me-1"></i> Calidad JPEG: <span id="jpegQualityValue">60</span>%
+                    </label>
+                    <input type="range" class="form-range" id="jpegQualitySlider" 
+                           min="20" max="95" value="60" step="5">
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span>Rápido (baja calidad)</span>
+                        <span>Lento (alta calidad)</span>
+                    </div>
+                </div>
+                
+                <!-- Info actual -->
+                <div class="card bg-light mt-3">
+                    <div class="card-body py-2">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <span id="currentConfigInfo">Cargando configuración...</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveCameraConfig()">
+                    <i class="bi bi-check-lg me-1"></i> Aplicar
+                </button>
             </div>
         </div>
     </div>
@@ -158,28 +331,66 @@
 
 <!-- 🎉 MODAL DE RESULTADOS -->
 <div id="resultsModal" class="modal fade" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content results-modal-content">
+            <div class="modal-header results-modal-header">
                 <h5 class="modal-title">
-                    <i class="bi bi-trophy"></i>
+                    <i class="bi bi-trophy-fill me-2"></i>
                     Resultados del Análisis
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body results-modal-body">
+                <!-- ⚠️ ALERTA DE MEDICIÓN SOSPECHOSA -->
+                <div id="suspiciousAlert" class="alert alert-warning d-none mb-3" role="alert">
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">
+                                <strong>⚠️ Medición posiblemente incorrecta</strong>
+                            </h6>
+                            <p id="suspiciousReason" class="mb-2 small"></p>
+                            <p id="suspiciousRecommendation" class="mb-1 small text-muted"></p>
+                            <p id="suspiciousExpectedRange" class="mb-0 small"><em></em></p>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="results-summary">
                     <div class="result-item">
                         <span class="result-label">Ejercicio:</span>
                         <span class="result-value">{{ exercise_name }}</span>
                     </div>
-                    <div class="result-item">
+                    
+                    <!-- ROM para análisis unilateral (perfil) -->
+                    <div id="unilateralResult" class="result-item highlight-item">
                         <span class="result-label">ROM Máximo Alcanzado:</span>
                         <span id="finalROM" class="result-value highlight">0°</span>
+                        <span id="finalSide" class="badge bg-info ms-2">---</span>
                     </div>
+                    
+                    <!-- ROM para análisis bilateral (frontal) - oculto por defecto -->
+                    <div id="bilateralResult" class="bilateral-results" style="display: none;">
+                        <div class="result-item highlight-item">
+                            <span class="result-label">ROM Máximo Izquierdo:</span>
+                            <span id="leftROM" class="result-value highlight" style="color: #00d4ff;">0°</span>
+                            <span id="leftClassification" class="badge bg-secondary ms-2">-</span>
+                        </div>
+                        <div class="result-item highlight-item">
+                            <span class="result-label">ROM Máximo Derecho:</span>
+                            <span id="rightROM" class="result-value highlight" style="color: #ff00ff;">0°</span>
+                            <span id="rightClassification" class="badge bg-secondary ms-2">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Asimetría:</span>
+                            <span id="asymmetryValue" class="result-value">0°</span>
+                            <span id="asymmetryBadge" class="badge bg-success ms-2">Normal</span>
+                        </div>
+                    </div>
+                    
                     <div class="result-item">
                         <span class="result-label">Clasificación:</span>
-                        <span id="romClassification" class="result-value badge">-</span>
+                        <span id="romClassification" class="result-value classification-badge">-</span>
                     </div>
                     <div class="result-item">
                         <span class="result-label">Rango Esperado:</span>
@@ -187,34 +398,263 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer results-modal-footer">
                 <button type="button" class="btn btn-success" onclick="saveResults()">
-                    <i class="bi bi-save"></i> Guardar en Historial
+                    <i class="bi bi-save me-1"></i> Guardar en Historial
                 </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">
                     Cerrar
                 </button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- 🦵 MODAL DE SELECCIÓN DE PIERNA PARA HIP ABDUCTION -->
+<div id="legSelectionModal" class="modal fade" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content leg-selection-modal-content">
+            <div class="modal-header leg-selection-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-left-right me-2"></i>
+                    Selección de Pierna
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" onclick="cancelLegSelection()"></button>
+            </div>
+            <div class="modal-body leg-selection-body">
+                <p class="mb-4 text-center" id="legSelectionMessage">
+                    Para el análisis de <strong>Abducción de Cadera</strong>, 
+                    seleccione qué pierna desea analizar primero:
+                </p>
+                
+                <div class="leg-buttons-container">
+                    <button type="button" class="btn btn-leg btn-leg-left" onclick="selectLegAndStart('left')">
+                        <i class="bi bi-arrow-left-circle fs-1 mb-2"></i>
+                        <span class="leg-label">Pierna Izquierda</span>
+                    </button>
+                    <button type="button" class="btn btn-leg btn-leg-right" onclick="selectLegAndStart('right')">
+                        <i class="bi bi-arrow-right-circle fs-1 mb-2"></i>
+                        <span class="leg-label">Pierna Derecha</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🔄 MODAL DE CONTINUACIÓN (segunda pierna) -->
+<div id="continueAnalysisModal" class="modal fade" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content continue-modal-content">
+            <div class="modal-header continue-modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle-fill me-2 text-success"></i>
+                    Primera Pierna Completada
+                </h5>
+            </div>
+            <div class="modal-body continue-modal-body">
+                <div class="first-leg-result mb-4">
+                    <p class="mb-2">Resultado de pierna <strong id="firstLegLabel">---</strong>:</p>
+                    <div class="result-display">
+                        <span id="firstLegROM" class="fs-2 fw-bold text-biomech-cyan">0°</span>
+                        <span id="firstLegClass" class="badge bg-success ms-2">-</span>
+                    </div>
+                </div>
+                
+                <p class="mb-3 text-center" id="continueMessage">
+                    ¿Desea continuar con la pierna <strong id="secondLegLabel">---</strong>?
+                </p>
+                
+                <div class="d-flex justify-content-center gap-3">
+                    <button type="button" class="btn btn-success btn-lg" onclick="continueWithSecondLeg()">
+                        <i class="bi bi-arrow-right-circle me-2"></i>
+                        Continuar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="skipSecondLeg()">
+                        Omitir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block styles %}
 <style>
-/* 🎨 ESTILOS DEL ANÁLISIS EN VIVO */
+/* ============================================================
+   🎯 BANNER DE TIPO DE ANÁLISIS (Sujeto vs Auto-análisis)
+   ============================================================ */
 
-.live-analysis-container {
-    padding: 20px 0;
+.analysis-target-banner {
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Header del ejercicio */
+.analysis-target-banner .banner-content {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+
+.analysis-target-banner.subject-analysis {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    border: 2px solid #0d6efd;
+    box-shadow: 0 8px 32px rgba(13, 110, 253, 0.3);
+    transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.analysis-target-banner.subject-analysis:hover {
+    box-shadow: 0 12px 40px rgba(13, 110, 253, 0.4);
+    transform: translateY(-2px);
+}
+
+.analysis-target-banner .banner-content {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px 0;
+}
+
+.analysis-target-banner .btn-outline-light {
+    color: #adb5bd;
+    border-color: #495057;
+    background: rgba(255,255,255,0.08);
+    transition: background 0.2s, color 0.2s;
+}
+
+.analysis-target-banner .btn-outline-light:hover {
+    background: #495057;
+    color: #fff;
+}
+
+.analysis-target-banner .btn-outline-warning {
+    color: #ffc107;
+    border-color: #ffc107;
+    background: rgba(255,193,7,0.08);
+    transition: background 0.2s, color 0.2s;
+}
+
+.analysis-target-banner .btn-outline-warning:hover {
+    background: #ffc107;
+    color: #000;
+}
+
+.analysis-target-banner .btn-sm {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(13,110,253,0.08);
+}
+
+.analysis-target-banner.self-analysis {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+    color: white;
+    border: 2px solid #146c43;
+}
+
+.analysis-target-banner i {
+    font-size: 1.2rem;
+}
+
+.analysis-target-banner .btn-outline-light {
+    border-color: rgba(255,255,255,0.5);
+}
+
+.analysis-target-banner .btn-outline-light:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.analysis-target-banner .btn-outline-warning {
+    color: #ffc107;
+    border-color: #ffc107;
+}
+
+.analysis-target-banner .btn-outline-warning:hover {
+    background: #ffc107;
+    color: #000;
+}
+
+/* ============================================================
+   🏷️ BADGE PERSONALIZADO PARA CLASIFICACIÓN "AUMENTADO"
+   Color: Amarillo dorado - Indica hiperlaxitud articular
+   ============================================================ */
+
+.bg-increased {
+    background-color: #F59E0B !important;  /* Amarillo dorado/ámbar */
+    color: #000 !important;                 /* Texto negro para contraste */
+}
+
+.badge.bg-increased {
+    font-weight: 600;
+}
+
+/* ============================================================
+   🎨 LAYOUT PRINCIPAL - VIDEO + DATOS EN TIEMPO REAL
+   Solo el panel de datos en tiempo real está al lado derecho
+   ============================================================ */
+
+.live-analysis-container {
+    padding: 15px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* ============================================================
+   📊 FILA PRINCIPAL: VIDEO + PANEL DE DATOS (lado a lado)
+   ============================================================ */
+
+.main-analysis-row {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 20px;
+    align-items: stretch;
+    margin-bottom: 20px;
+}
+
+/* ============================================================
+   🎥 COLUMNA DE VIDEO
+   ============================================================ */
+
+.video-column {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .exercise-header-bar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 20px;
-    border-radius: 10px 10px 0 0;
-    margin-bottom: -1px;
+    padding: 15px 20px;
+    border-radius: 12px 12px 0 0;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.header-title h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.header-description {
+    opacity: 0.85;
+    font-size: 0.85rem;
 }
 
 .view-badge {
@@ -222,161 +662,370 @@
     padding: 8px 16px;
     border-radius: 20px;
     font-size: 0.9rem;
+    white-space: nowrap;
 }
 
-/* Video Section */
-.video-section {
-    background: white;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
+/* ============================================================
+   🔽 DROPDOWN DE EJERCICIOS EN EL HEADER
+   ============================================================ */
 
-.video-wrapper {
+.exercise-dropdown-container {
     position: relative;
-    background: #000;
-    min-height: 480px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
 }
 
-.video-stream {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-.video-stream.hidden {
-    display: none;
-}
-
-.client-video {
-    background: #111;
-}
-
-.video-wrapper.client-mode .server-video {
-    display: none;
-}
-
-.video-wrapper.server-mode .client-video {
-    display: none;
-}
-
-.video-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.7);
+.exercise-dropdown-btn {
+    background: transparent;
+    border: none;
     color: white;
-    z-index: 10;
-}
-
-.video-overlay.loading {
-    display: flex;
-}
-
-.video-overlay.hidden {
-    display: none;
-}
-
-.video-overlay.hint {
-    text-align: center;
-    padding: 20px;
-    font-size: 1rem;
-    gap: 10px;
-}
-
-.video-overlay.hint i {
-    font-size: 2.2rem;
-}
-
-.video-controls {
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 0 0 10px 10px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-/* Cards de información */
-.info-card {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.info-card-title {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
     font-weight: 600;
-    margin-bottom: 15px;
-    color: #333;
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.exercise-dropdown-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.exercise-dropdown-btn .dropdown-arrow {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.exercise-dropdown-btn.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.exercise-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 320px;
+    max-height: 450px;
+    overflow-y: auto;
+    background: rgba(30, 30, 50, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    margin-top: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.exercise-dropdown-menu.show {
+    display: block;
+    animation: dropdownFadeIn 0.2s ease;
+}
+
+@keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-segment {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-segment:last-child {
+    border-bottom: none;
+}
+
+.dropdown-segment-title {
+    padding: 12px 16px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #a0a0c0;
+    letter-spacing: 0.5px;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.info-card-title i {
+.dropdown-segment-title i {
+    font-size: 0.9rem;
+}
+
+.dropdown-exercise-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px 10px 32px;
+    color: #e0e0e0;
+    text-decoration: none;
+    transition: background 0.15s ease;
+    cursor: pointer;
+}
+
+.dropdown-exercise-item:hover {
+    background: rgba(102, 126, 234, 0.25);
+    color: white;
+}
+
+.dropdown-exercise-item.current {
+    background: rgba(102, 126, 234, 0.4);
+    color: #a8c0ff;
+    pointer-events: none;
+}
+
+.exercise-item-name {
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.exercise-item-view {
+    font-size: 0.75rem;
+    color: #888;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 10px;
+}
+
+.current-check {
+    color: #4ade80;
+    font-size: 1rem;
+    margin-left: 8px;
+}
+
+/* Scrollbar personalizado para el dropdown */
+.exercise-dropdown-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.exercise-dropdown-menu::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.exercise-dropdown-menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.exercise-dropdown-menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.video-section {
+    background: #1a1a2e;
+    position: relative;
+    flex: 1;
+}
+
+.video-wrapper {
+    position: relative;
+    background: #000;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.video-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.video-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    z-index: 10;
+}
+
+.video-overlay.hidden {
+    display: none !important;
+}
+
+.video-controls {
+    padding: 15px 20px;
+    background: #16213e;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.video-controls .btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ============================================================
+   📊 PANEL LATERAL - SOLO DATOS EN TIEMPO REAL
+   ============================================================ */
+
+.realtime-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.realtime-panel .info-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.realtime-panel .metrics-grid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.realtime-panel .metric-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* ============================================================
+   📋 SECCIÓN SECUNDARIA - GRÁFICO, RANGOS, HISTORIAL
+   ============================================================ */
+
+.secondary-info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    align-items: start;
+}
+
+/* ============================================================
+   🎴 INFO CARDS
+   ============================================================ */
+
+.info-card {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.info-card-header {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.info-card-header i:first-child {
+    color: #667eea;
+    font-size: 1rem;
+}
+
+.info-card-header.clickable {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.info-card-header.clickable:hover {
     color: #667eea;
 }
 
-/* Métricas */
-.metrics-display {
+.collapse-icon {
+    transition: transform 0.3s;
+}
+
+.info-card-header[aria-expanded="true"] .collapse-icon {
+    transform: rotate(180deg);
+}
+
+/* ============================================================
+   📊 MÉTRICAS
+   ============================================================ */
+
+.metrics-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 12px;
 }
 
-.metric-item {
+.metric-box {
     text-align: center;
-    padding: 15px;
-    border-radius: 8px;
-    background: #f8f9fa;
+    padding: 14px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.metric-item.primary {
-    background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
-    border: 2px solid #667eea;
+.metric-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.metric-item.success {
-    background: linear-gradient(135deg, #11998e20 0%, #38ef7d20 100%);
-    border: 2px solid #11998e;
+.metric-box.primary {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.5);
 }
 
-.metric-item.info {
+.metric-box.success {
+    background: linear-gradient(135deg, rgba(17, 153, 142, 0.15) 0%, rgba(56, 239, 125, 0.15) 100%);
+    border: 1px solid rgba(17, 153, 142, 0.5);
+}
+
+.metric-box.wide {
     grid-column: 1 / -1;
-    background: #e3f2fd;
-    border: 2px solid #2196f3;
 }
 
-.metric-item.secondary {
+.metric-box.info-status {
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid rgba(33, 150, 243, 0.4);
+}
+
+.metric-box.secondary {
     grid-column: 1 / -1;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .metric-label {
-    font-size: 0.85rem;
-    color: #666;
-    margin-bottom: 5px;
-    font-weight: 500;
+    font-size: 0.7rem;
+    color: #999;
+    margin-bottom: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .metric-value {
     font-size: 2rem;
     font-weight: 700;
-    color: #333;
+    color: #00d4ff;
+    line-height: 1;
 }
 
 .metric-value.small {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
+    color: #4CAF50;
+}
+
+.metric-side {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 4px;
 }
 
 .metric-status {
@@ -384,107 +1033,704 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #ffc107;
 }
 
 .metric-status i {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
 }
 
 .metric-status.valid {
-    color: #11998e;
+    color: #4CAF50;
 }
 
 .metric-status.invalid {
     color: #f39c12;
 }
 
-/* Listas */
+/* ============================================================
+   📈 GRÁFICO Y LISTAS
+   ============================================================ */
+
+.rom-chart-container {
+    height: 180px;
+    position: relative;
+}
+
 .instructions-list {
-    padding-left: 20px;
+    padding: 12px 12px 12px 28px;
     margin: 0;
+    color: #bbb;
+    font-size: 0.85rem;
+    list-style-position: outside;
 }
 
 .instructions-list li {
-    margin-bottom: 10px;
-    line-height: 1.6;
-    color: #555;
+    margin-bottom: 8px;
+    line-height: 1.5;
 }
 
-.setup-list {
+.instructions-list li:last-child {
+    margin-bottom: 0;
+}
+
+.range-list {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-.setup-list li {
-    padding: 8px 0;
-    color: #555;
+.range-list li {
     display: flex;
-    align-items: start;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.range-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.range-label {
+    color: #999;
+}
+
+.range-value {
+    font-weight: 600;
+    color: #4CAF50;
+}
+
+/* ============================================================
+   🏥 CLASIFICACIÓN ROM
+   ============================================================ */
+
+.rom-classification-card {
+    display: flex;
+    flex-direction: column;
     gap: 8px;
 }
 
-.setup-list li i {
-    color: #11998e;
-    margin-top: 3px;
+.rom-normal-range {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    border-radius: 6px;
+    padding: 10px;
+    border: 1px solid rgba(102, 126, 234, 0.3);
 }
 
-/* Gráfico */
-.rom-chart-container {
-    position: relative;
-    height: 200px;
-}
-
-/* Modal de resultados */
-.results-summary {
-    padding: 20px 0;
-}
-
-.result-item {
+.range-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 15px;
-    border-bottom: 1px solid #eee;
+    gap: 8px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
 }
 
-.result-item:last-child {
-    border-bottom: none;
-}
-
-.result-label {
-    font-weight: 500;
-    color: #666;
-}
-
-.result-value {
-    font-weight: 600;
-    color: #333;
-}
-
-.result-value.highlight {
-    font-size: 1.5rem;
+.range-header i {
     color: #667eea;
 }
 
-.result-value.badge {
-    padding: 5px 15px;
+.range-header strong {
+    color: #00d4ff;
+}
+
+.classification-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.classification-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.classification-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.classification-level {
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: capitalize;
+}
+
+.classification-range {
+    font-size: 0.75rem;
+    color: #bbb;
+}
+
+.classification-range .percentage {
+    color: #888;
+    font-size: 0.7rem;
+}
+
+.clinical-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(255, 193, 7, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    font-size: 0.8rem;
+    color: #ccc;
+    line-height: 1.4;
+}
+
+.clinical-note i {
+    color: #ffc107;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.bibliography-ref {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    background: rgba(33, 150, 243, 0.08);
+    border-radius: 6px;
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    font-size: 0.75rem;
+    color: #aaa;
+}
+
+.bibliography-ref i {
+    color: #2196F3;
+}
+
+.bibliography-ref span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bibliography-ref .source {
+    font-size: 0.7rem;
+    color: #777;
+    font-style: italic;
+    padding-left: 20px;
+}
+
+/* ============================================================
+   📜 HISTORIAL RECIENTE
+   ============================================================ */
+
+#recentHistoryPanel {
+    max-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.history-list {
+    max-height: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.5) rgba(255,255,255,0.05);
+}
+
+.history-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.history-list::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.6);
+    border-radius: 4px;
+}
+
+.history-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.8);
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    transition: background 0.2s;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-item .badge {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+}
+
+/* ============================================================
+   📱 RESPONSIVE
+   ============================================================ */
+
+/* Pantallas grandes */
+@media (min-width: 1400px) {
+    .main-analysis-row {
+        grid-template-columns: 1fr 320px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+}
+
+/* Tablets y pantallas medianas */
+@media (max-width: 1200px) {
+    .main-analysis-row {
+        grid-template-columns: 1fr 260px;
+        gap: 15px;
+    }
+    
+    .secondary-info-row {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+    
+    .metric-value {
+        font-size: 1.6rem;
+    }
+}
+
+/* Pantallas medianas - mantener 2 columnas pero panel más pequeño */
+@media (max-width: 991px) {
+    .main-analysis-row {
+        grid-template-columns: 1fr 240px;
+        gap: 12px;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+    }
+    
+    .metric-value.small {
+        font-size: 1.1rem;
+    }
+    
+    .secondary-info-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Tablets - AQUÍ colapsa a 1 columna */
+@media (max-width: 768px) {
+    .main-analysis-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .realtime-panel {
+        order: 2;
+    }
+    
+    .video-column {
+        order: 1;
+    }
+    
+    .realtime-panel .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .realtime-panel .metric-box.wide,
+    .realtime-panel .metric-box.secondary {
+        grid-column: span 1;
+    }
+    
+    .secondary-info-row {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .secondary-info-row .info-card:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Mobile pequeño */
+@media (max-width: 576px) {
+    .live-analysis-container {
+        padding: 10px;
+    }
+    
+    .exercise-header-bar {
+        padding: 12px 15px;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .view-badge {
+        align-self: flex-start;
+    }
+    
+    .realtime-panel .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .secondary-info-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .secondary-info-row .info-card:last-child {
+        grid-column: auto;
+    }
+    
+    .video-controls {
+        padding: 12px;
+        gap: 8px;
+    }
+    
+    .video-controls .btn {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
+        padding: 10px 8px;
+        font-size: 0.85rem;
+    }
+    
+    .video-controls .btn i {
+        font-size: 1rem;
+    }
+    
+    .video-controls .btn:last-child {
+        flex: 1 1 100%;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .metric-box {
+        padding: 12px 8px;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+    }
+    
+    .info-card {
+        padding: 14px;
+    }
+}
+
+/* ============================================================
+   🖥️ PANTALLA COMPLETA
+   ============================================================ */
+
+.video-wrapper:fullscreen,
+.video-wrapper:-webkit-full-screen {
+    background: #000;
+    width: 100vw;
+    height: 100vh;
+}
+
+.video-wrapper:fullscreen .video-stream,
+.video-wrapper:-webkit-full-screen .video-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* ============================================================
+   🎨 MODAL DE RESULTADOS - CON ESPECIFICIDAD FORZADA
+   ============================================================ */
+
+/* Forzar estilos del modal sobre Bootstrap */
+#resultsModal .modal-content,
+.modal .results-modal-content {
+    background: #1a1a2e !important;
+    background-color: #1a1a2e !important;
+    color: white !important;
+    border: 2px solid #667eea !important;
+    border-radius: 16px !important;
+    overflow: hidden;
+}
+
+#resultsModal .modal-header,
+.modal .results-modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-bottom: none !important;
+    padding: 18px 24px !important;
+    color: white !important;
+}
+
+#resultsModal .modal-header .modal-title,
+.results-modal-header .modal-title {
+    font-weight: 600 !important;
+    color: white !important;
+}
+
+#resultsModal .modal-header .btn-close {
+    filter: brightness(0) invert(1) !important;
+}
+
+#resultsModal .modal-body,
+.modal .results-modal-body {
+    padding: 24px !important;
+    background: #1a1a2e !important;
+    color: white !important;
+}
+
+.results-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#resultsModal .result-item,
+.results-modal-body .result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px;
+    border: 1px solid rgba(102, 126, 234, 0.2) !important;
+}
+
+#resultsModal .result-item.highlight-item,
+.results-modal-body .result-item.highlight-item {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.25) 100%) !important;
+    border: 1px solid rgba(102, 126, 234, 0.5) !important;
+}
+
+#resultsModal .result-label,
+.results-modal-body .result-label {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+#resultsModal .result-value,
+.results-modal-body .result-value {
+    font-weight: 600;
+    font-size: 1rem;
+    color: white !important;
+}
+
+#resultsModal .result-value.highlight,
+.results-modal-body .result-value.highlight {
+    color: #00d4ff !important;
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+}
+
+/* Estilos para resultados bilaterales */
+#resultsModal .bilateral-results {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#resultsModal .bilateral-results .result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#resultsModal .bilateral-results #leftROM {
+    color: #00d4ff !important;
+    font-size: 1.8rem !important;
+}
+
+#resultsModal .bilateral-results #rightROM {
+    color: #ff00ff !important;
+    font-size: 1.8rem !important;
+    text-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+}
+
+#resultsModal .classification-badge,
+.results-modal-body .classification-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    color: white !important;
+    padding: 6px 16px;
     border-radius: 20px;
     font-size: 0.9rem;
 }
 
-/* Responsive */
-@media (max-width: 992px) {
-    .metrics-display {
-        grid-template-columns: 1fr;
-    }
-    
-    .metric-item.info,
-    .metric-item.secondary {
-        grid-column: 1;
-    }
+#resultsModal .modal-footer,
+.modal .results-modal-footer {
+    background: #1a1a2e !important;
+    border-top: 1px solid rgba(102, 126, 234, 0.3) !important;
+    padding: 16px 24px !important;
+    gap: 12px;
+}
+
+#resultsModal .modal-footer .btn-outline-light {
+    color: rgba(255, 255, 255, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+#resultsModal .modal-footer .btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+/* Z-index para modal sobre fullscreen */
+#resultsModal {
+    z-index: 10500 !important;
+}
+
+#resultsModal .modal-backdrop {
+    z-index: 10499 !important;
+}
+
+/* Z-index para modales de selección de pierna sobre fullscreen */
+#legSelectionModal,
+#continueAnalysisModal {
+    z-index: 10500 !important;
+}
+
+#legSelectionModal ~ .modal-backdrop,
+#continueAnalysisModal ~ .modal-backdrop {
+    z-index: 10499 !important;
+}
+
+/* ============================================================
+   ⚠️ ALERTA DE MEDICIÓN SOSPECHOSA
+   Estilo especial para advertencias de posibles errores
+   ============================================================ */
+#suspiciousAlert {
+    background: rgba(255, 193, 7, 0.15) !important;
+    border: 1px solid rgba(255, 193, 7, 0.4) !important;
+    border-radius: 8px;
+    color: #ffc107 !important;
+}
+
+#suspiciousAlert.alert-danger {
+    background: rgba(220, 53, 69, 0.15) !important;
+    border: 1px solid rgba(220, 53, 69, 0.4) !important;
+    color: #dc3545 !important;
+}
+
+#suspiciousAlert .alert-heading {
+    color: inherit !important;
+}
+
+#suspiciousAlert p {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+#suspiciousAlert .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ============================================================
+   🦵 MODAL DE SELECCIÓN DE PIERNA (Hip Abduction)
+   ============================================================ */
+
+.leg-selection-modal-content,
+.continue-modal-content {
+    background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 16px;
+}
+
+.leg-selection-header,
+.continue-modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 15px 15px 0 0;
+}
+
+.leg-selection-header .modal-title,
+.continue-modal-header .modal-title {
+    color: white;
+    font-weight: 600;
+}
+
+.leg-selection-body,
+.continue-modal-body {
+    padding: 25px;
+    color: #e0e0e0;
+}
+
+.leg-buttons-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.btn-leg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 150px;
+    height: 150px;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.btn-leg-left {
+    background: linear-gradient(145deg, #00d4ff, #0099cc);
+    color: #000;
+}
+
+.btn-leg-left:hover {
+    background: linear-gradient(145deg, #00e5ff, #00b8e6);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+.btn-leg-right {
+    background: linear-gradient(145deg, #ff00ff, #cc00cc);
+    color: #fff;
+}
+
+.btn-leg-right:hover {
+    background: linear-gradient(145deg, #ff33ff, #e600e6);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+}
+
+.leg-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+/* Modal de continuación */
+.first-leg-result {
+    text-align: center;
+    padding: 20px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.result-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.text-biomech-cyan {
+    color: #00d4ff !important;
 }
 </style>
 {% endblock %}
@@ -498,13 +1744,14 @@
     const EXERCISE_CONFIG = {
         segment_type: "{{ segment_type }}",
         exercise_key: "{{ exercise_key }}",
+        exercise_name: "{{ exercise_name }}",
         camera_view: "{{ camera_view }}",
         min_angle: {{ min_angle }},
-        max_angle: {{ max_angle }}
+        max_angle: {{ max_angle }},
+        back_url: "{{ url_for('main.segment_exercises', segment_type=segment_type) }}"
     };
 </script>
 
-<!-- Script principal de análisis -->
-<script src="{{ url_for('static', filename='js/client_camera_handler.js') }}"></script>
-<script src="{{ url_for('static', filename='js/live_analysis.js') }}"></script>
+<!-- Script principal de análisis - v3.5 con clasificación del backend -->
+<script src="{{ url_for('static', filename='js/live_analysis.js') }}?v=3.5"></script>
 {% endblock %}

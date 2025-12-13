@@ -4,95 +4,48 @@
 
 {% block content %}
 <div class="fade-in">
-    <!-- 🎯 HEADER DEL SEGMENTO -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="segment-header">
+    <!-- LAYOUT PRINCIPAL: Contenido + Sidebar -->
+    <div class="row">
+        <!-- ====== COLUMNA PRINCIPAL (Ejercicios) ====== -->
+        <div class="col-lg-9 col-xl-9">
+            
+            <!-- 🎯 HEADER DEL SEGMENTO -->
+            <div class="segment-header mb-4">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="segment-icon-large {{ segment_type }}">
-                            <img src="{{ url_for('static', filename='images/joints/' + segment_icon) }}" 
+                            <img src="{{ url_for('static', filename='images/joints_icons/' + segment_icon) }}" 
                                  alt="{{ segment_name }}" 
                                  class="joint-icon-large">
                         </div>
                         <div>
                             <h1 class="segment-title">{{ segment_name }}</h1>
-                            <p class="segment-description">{{ segment_description }}</p>
+                            <p class="segment-description mb-0">{{ segment_description }}</p>
                         </div>
                     </div>
                     <a href="{{ url_for('main.segments') }}" class="btn-back">
                         <i class="bi bi-arrow-left"></i>
-                        Volver a Segmentos
+                        Volver
                     </a>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- 📋 INFORMACIÓN Y PREPARACIÓN -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="preparation-panel">
-                <h3>
-                    <i class="bi bi-clipboard-check"></i>
-                    Preparación para el Análisis
-                </h3>
-                <div class="row g-3 mt-2">
-                    <div class="col-md-6">
-                        <div class="prep-card">
-                            <div class="prep-icon">
-                                <i class="bi bi-camera-video"></i>
-                            </div>
-                            <div class="prep-content">
-                                <h5>Configuración de Cámara</h5>
-                                <ul>
-                                    <li>Coloca la cámara a <strong>2-3 metros</strong> de distancia</li>
-                                    <li>Altura recomendada: <strong>a nivel del pecho</strong></li>
-                                    <li>Asegúrate de tener <strong>buena iluminación</strong></li>
-                                    <li>Fondo despejado y sin obstáculos</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="prep-card">
-                            <div class="prep-icon">
-                                <i class="bi bi-person-check"></i>
-                            </div>
-                            <div class="prep-content">
-                                <h5>Recomendaciones Importantes</h5>
-                                <ul>
-                                    <li>Usa <strong>ropa ajustada</strong> que permita ver las articulaciones</li>
-                                    <li>Realiza un <strong>calentamiento previo</strong> de 5 minutos</li>
-                                    <li>Mantente dentro del <strong>campo de visión</strong></li>
-                                    <li>Detente si sientes <strong>dolor o molestia</strong></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- 🏋️ SELECTOR DE EJERCICIOS -->
+            <div class="mb-3">
+                <h2 class="exercises-title">
+                    <i class="bi bi-list-check"></i>
+                    Selecciona un Ejercicio
+                </h2>
+                <p class="exercises-subtitle">
+                    Elige el movimiento que deseas analizar.
+                </p>
             </div>
-        </div>
-    </div>
 
-    <!-- 🏋️ SELECTOR DE EJERCICIOS -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <h2 class="exercises-title">
-                <i class="bi bi-list-check"></i>
-                Selecciona un Ejercicio
-            </h2>
-            <p class="exercises-subtitle">
-                Elige el movimiento que deseas analizar. Cada ejercicio incluye instrucciones y demostración.
-            </p>
-        </div>
-    </div>
-
-    <!-- GRID DE EJERCICIOS -->
-    <div class="row g-4">
-        {% for exercise in exercises %}
-        <div class="col-lg-4 col-md-6">
-            <div class="exercise-card" data-exercise="{{ exercise.key }}">
+            <!-- GRID DE EJERCICIOS -->
+            <div class="row g-4">
+                {% for exercise in exercises %}
+                <div class="col-xl-4 col-lg-6 col-md-6">
+                    <div class="exercise-card" data-exercise="{{ exercise.key }}">
                 <!-- Header -->
                 <div class="exercise-header">
                     <div class="d-flex justify-content-between align-items-start">
@@ -111,8 +64,18 @@
 
                 <!-- Video Demo -->
                 {% if exercise.has_video %}
-                <div class="exercise-video" onclick="openVideoModal('{{ segment_type }}', '{{ exercise.key }}')">
+                <div class="exercise-video" 
+                     onclick="openVideoModal('{{ segment_type }}', '{{ exercise.key }}')"
+                     onmouseenter="playPreview(this)"
+                     onmouseleave="stopPreview(this)">
                     <div class="video-thumbnail">
+                        <video class="video-preview" 
+                               src="{{ url_for('static', filename='videos/exercises/' ~ segment_type ~ '_' ~ exercise.key ~ '.mp4') }}"
+                               muted 
+                               loop 
+                               playsinline
+                               preload="metadata">
+                        </video>
                         <div class="video-overlay">
                             <i class="bi bi-play-circle-fill"></i>
                             <span>Ver Demostración</span>
@@ -151,26 +114,50 @@
                         <p>{{ exercise.instructions }}</p>
                     </div>
 
-                    {% if exercise.warning %}
-                    <div class="exercise-warning">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        <span>{{ exercise.warning }}</span>
-                    </div>
-                    {% endif %}
                 </div>
 
                 <!-- Footer con botón -->
                 <div class="exercise-footer">
                     <a href="{{ url_for('main.live_analysis', segment_type=segment_type, exercise_key=exercise.key) }}" 
                        class="btn-start-exercise">
-                        <i class="bi bi-play-fill"></i>
-                        Iniciar Análisis
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Ir a Análisis
                     </a>
                 </div>
             </div>
         </div>
         {% endfor %}
+            </div>
+            <!-- Fin GRID DE EJERCICIOS -->
+            
+        </div>
+        <!-- ====== FIN COLUMNA PRINCIPAL ====== -->
+        
+        <!-- ====== SIDEBAR DERECHO (Control de Cámara) ====== -->
+        <div class="col-lg-3 col-xl-3">
+            <div class="sidebar-sticky">
+                <!-- Panel de Control de Altura -->
+                {% include 'components/camera_height_panel.html' %}
+                
+                <!-- Panel de Control de Paneo (Bluetooth) -->
+                {% include 'components/pan_control.html' %}
+                
+                <!-- Tips Rápidos -->
+                <div class="quick-tips-panel">
+                    <h6><i class="bi bi-lightbulb"></i> Tips Rápidos</h6>
+                    <ul class="tips-list">
+                        <li><i class="bi bi-check-circle"></i> Cámara a 2-3m de distancia</li>
+                        <li><i class="bi bi-check-circle"></i> Buena iluminación</li>
+                        <li><i class="bi bi-check-circle"></i> Ropa que permita ver articulaciones</li>
+                        <li><i class="bi bi-check-circle"></i> Fondo despejado</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- ====== FIN SIDEBAR ====== -->
+        
     </div>
+    <!-- Fin LAYOUT PRINCIPAL -->
 </div>
 
 <!-- 🎬 MODAL DE VIDEO -->
@@ -231,6 +218,27 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+.segment-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.segment-warning i {
+    color: #f59e0b;
+    font-size: 0.9rem;
+}
+
+.segment-warning span {
+    color: #fbbf24;
 }
 
 .segment-description {
@@ -446,9 +454,20 @@
 
 .video-thumbnail {
     height: 200px;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 212, 255, 0.1));
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 20, 40, 0.95));
     position: relative;
     overflow: hidden;
+}
+
+/* Video Preview Element */
+.video-preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
 }
 
 .video-overlay {
@@ -463,10 +482,11 @@
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
+    z-index: 2;
 }
 
 .exercise-video:hover .video-overlay {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .video-overlay i {
@@ -693,7 +713,88 @@
     color: rgba(255, 255, 255, 0.8);
 }
 
+/* ============================================================================
+   SIDEBAR STICKY - Panel de Control de Cámara
+   ============================================================================ */
+
+.sidebar-sticky {
+    position: sticky;
+    top: 100px; /* Ajustar según altura del navbar */
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+/* Panel de Tips Rápidos */
+.quick-tips-panel {
+    background: linear-gradient(135deg, 
+        rgba(0, 20, 40, 0.85) 0%, 
+        rgba(0, 40, 60, 0.8) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.quick-tips-panel h6 {
+    color: var(--biomech-cyan);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quick-tips-panel h6 i {
+    color: #f59e0b;
+}
+
+.tips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tips-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tips-list li:last-child {
+    border-bottom: none;
+}
+
+.tips-list li i {
+    color: #22c55e;
+    font-size: 0.75rem;
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
 /* Responsive */
+@media (max-width: 991px) {
+    /* En tablets y móviles, el sidebar va abajo */
+    .sidebar-sticky {
+        position: relative;
+        top: 0;
+        max-height: none;
+        margin-top: 2rem;
+    }
+    
+    /* Reorganizar el layout - sidebar primero en móvil */
+    .col-lg-9 {
+        order: 2;
+    }
+    
+    .col-lg-3 {
+        order: 1;
+    }
+}
+
 @media (max-width: 768px) {
     .segment-header {
         padding: 1.5rem;
@@ -713,17 +814,8 @@
         font-size: 1.5rem;
     }
     
-    .preparation-panel {
-        padding: 1.5rem;
-    }
-    
-    .prep-card {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .prep-icon {
-        margin: 0 auto;
+    .quick-tips-panel {
+        display: none; /* Ocultar tips en móvil para ahorrar espacio */
     }
 }
 </style>
@@ -734,6 +826,25 @@
 // Mostrar mensaje de funcionalidad futura
 function showComingSoon(feature) {
     alert('⚠️ Funcionalidad futura a implementar\n\n' + feature + ' estará disponible próximamente.');
+}
+
+// Sistema de Video Preview (hover)
+function playPreview(container) {
+    const video = container.querySelector('.video-preview');
+    if (video) {
+        video.currentTime = 0;
+        video.play().catch(() => {
+            // Ignorar errores de autoplay (políticas del navegador)
+        });
+    }
+}
+
+function stopPreview(container) {
+    const video = container.querySelector('.video-preview');
+    if (video) {
+        video.pause();
+        video.currentTime = 0;
+    }
 }
 
 // Sistema de Video Modal

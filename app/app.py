@@ -19,6 +19,8 @@ Fecha: 2025-11-14
 import os
 import sys
 import logging
+import cv2
+import numpy as np
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
@@ -173,7 +175,83 @@ def create_app(config_name='development'):
     app.logger.info(f"🏃 Modo: {config_name}")
     app.logger.info(f"🗄️  Base de datos: {app.config['DATABASE_PATH']}")
     
+    # ========================================================================
+    # 🔥 WARMUP DE ANALYZERS - Pre-inicialización
+    # ========================================================================
+    
+    if not app.config.get('TESTING', False):  # Solo si NO es testing
+        warmup_analyzers(app)
+    
     return app
+
+
+def warmup_analyzers(app):
+    """
+    Pre-inicializa SOLO MediaPipe Pose (LAZY LOADING de analyzers)
+    
+    ESTRATEGIA OPTIMIZADA:
+    - Warmup: Solo carga MediaPipe Pose singleton (~0.3-0.5s con LITE)
+    - Analyzers: Se crean on-demand cuando el usuario los necesita (~0.1s)
+    
+    Beneficios:
+    - Warmup ultra-rápido: <1s con model_complexity=0 (LITE)
+    - Memoria eficiente: Solo carga analyzers que se usan
+    - Escalable: Soporta 50+ tipos de ejercicios sin impacto en startup
+    - Primera carga de analyzer: instantánea (MediaPipe ya listo)
+    
+    Args:
+        app: Flask application instance
+    """
+    try:
+        import time
+        from app.core.pose_singleton import get_shared_pose
+        
+        print("\n" + "=" * 70)
+        print("🔥 WARMUP: Pre-inicializando MediaPipe Pose (SINGLETON)")
+        print("⏳ model_complexity=0 (LITE) para arranque rápido")
+        print("=" * 70)
+        
+        start_time = time.time()
+        
+        # Crear frame dummy (negro 640x480 RGB) para forzar carga de modelos
+        dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        
+        # ÚNICO PASO: Forzar creación del singleton MediaPipe Pose
+        print("📌 [1/3] Creando instancia COMPARTIDA de MediaPipe Pose...")
+        t1 = time.time()
+        pose = get_shared_pose()  # ⚡ Carga modelos TensorFlow
+        t2 = time.time()
+        print(f"   ✅ Pose creado en {t2-t1:.2f}s")
+        
+        print("📌 [2/3] Procesando frame dummy para inicializar TensorFlow...")
+        t3 = time.time()
+        result = pose.process(cv2.cvtColor(dummy_frame, cv2.COLOR_BGR2RGB))
+        t4 = time.time()
+        print(f"   ✅ Primer process() completado en {t4-t3:.2f}s")
+        print(f"   📊 Landmarks detectados: {result.pose_landmarks is not None}")
+        
+        # NUEVO: Segundo proceso para confirmar que está "caliente"
+        print("📌 [3/3] Segundo process() para confirmar calentamiento...")
+        t5 = time.time()
+        _ = pose.process(cv2.cvtColor(dummy_frame, cv2.COLOR_BGR2RGB))
+        t6 = time.time()
+        print(f"   ✅ Segundo process() en {t6-t5:.2f}s (debería ser más rápido)")
+        
+        elapsed = time.time() - start_time
+        
+        print("=" * 70)
+        print(f"✅ WARMUP COMPLETADO en {elapsed:.2f}s")
+        print("⚡ Singleton MediaPipe: LISTO y compartido")
+        print("📦 Analyzers: Se crearán on-demand (lazy loading)")
+        print("🎯 Primera carga de analyzer: ~0.1s (reutiliza MediaPipe)")
+        print("=" * 70 + "\n")
+        
+        app.logger.info(f"Warmup completado en {elapsed:.2f}s - MediaPipe Pose singleton listo")
+        
+    except Exception as e:
+        print(f"\n❌ ERROR en warmup de analyzers: {e}\n")
+        app.logger.error(f"Error en warmup: {e}", exc_info=True)
+
 
 
 # ============================================================================
@@ -259,6 +337,24 @@ def register_blueprints(app):
         
     except Exception as e:
         app.logger.warning(f"⚠️  No se pudo registrar blueprint 'api': {e}")
+    
+    try:
+        # Blueprint de API Hardware (control de altura de cámara)
+        from app.routes.api_hardware import api_hardware_bp
+        app.register_blueprint(api_hardware_bp)
+        app.logger.info("✅ Blueprint 'api_hardware' registrado")
+        
+    except Exception as e:
+        app.logger.warning(f"⚠️  No se pudo registrar blueprint 'api_hardware': {e}")
+    
+    try:
+        # Blueprint de PDF (generación de reportes)
+        from app.routes.pdf import pdf_bp
+        app.register_blueprint(pdf_bp)
+        app.logger.info("✅ Blueprint 'pdf' registrado")
+        
+    except Exception as e:
+        app.logger.warning(f"⚠️  No se pudo registrar blueprint 'pdf': {e}")
 
 
 # ============================================================================

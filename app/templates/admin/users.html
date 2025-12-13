@@ -7,7 +7,7 @@
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}" class="text-biomech-cyan">Admin</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}" class="text-biomech-cyan">Dashboard</a></li>
             <li class="breadcrumb-item active">Usuarios</li>
         </ol>
     </nav>
@@ -25,18 +25,25 @@
                             Total: {{ users.total }} usuarios | Página {{ users.page }} de {{ users.pages }}
                         </p>
                     </div>
-                    <a href="{{ url_for('admin_create_user') }}" class="biomech-button">
+                    <a href="{{ url_for('auth.register') }}" class="biomech-button">
                         <i class="bi bi-person-plus"></i> Crear Usuario
                     </a>
                 </div>
 
                 <!-- Filtros -->
                 <form method="GET" class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text" name="search" class="form-control bg-transparent border-secondary text-light" 
                                placeholder="Buscar usuario..." value="{{ search }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <select name="role" class="form-select bg-transparent border-secondary text-light">
+                            <option value="all" {% if role_filter == 'all' %}selected{% endif %}>Todos los roles</option>
+                            <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Administradores</option>
+                            <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Estudiantes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <select name="status" class="form-select bg-transparent border-secondary text-light">
                             <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Todos los estados</option>
                             <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Activos</option>
@@ -49,9 +56,9 @@
                         </button>
                     </div>
                     <div class="col-md-3">
-                        {% if search or status_filter != 'all' %}
-                        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary w-100">
-                            <i class="bi bi-x-circle"></i> Limpiar
+                        {% if search or status_filter != 'all' or role_filter != 'all' %}
+                        <a href="{{ url_for('main.users') }}" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Limpiar filtros
                         </a>
                         {% endif %}
                     </div>
@@ -74,7 +81,7 @@
                                 <th>Rol</th>
                                 <th>Estado</th>
                                 <th>Último Acceso</th>
-                                <th>Análisis</th>
+                                <th class="text-center">Análisis</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
@@ -96,25 +103,23 @@
                                     <div>
                                         <div class="text-light">{{ user.full_name or 'Sin nombre' }}</div>
                                         <small class="text-muted">{{ user.email or 'Sin email' }}</small>
-                                        {% if user.get_age() %}
-                                        <br><small class="text-info">{{ user.get_age() }} años</small>
+                                        {% if user.student_id %}
+                                        <br><small class="text-info">CI: {{ user.student_id }}</small>
                                         {% endif %}
                                     </div>
                                 </td>
                                 <td>
                                     {% if user.role == 'admin' %}
                                         <span class="badge bg-danger">Administrador</span>
-                                    {% elif user.role == 'tech' %}
-                                        <span class="badge bg-warning">Técnico</span>
                                     {% else %}
                                         <span class="badge bg-info">Estudiante</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if user.status == 'active' %}
+                                    {% if user.is_active %}
                                         <span class="badge bg-success">Activo</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">{{ user.status|title }}</span>
+                                        <span class="badge bg-secondary">Inactivo</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -127,27 +132,30 @@
                                         <small class="text-muted">Nunca</small>
                                     {% endif %}
                                 </td>
-                                <td>
-                                    <div class="text-center">
-                                        <span class="badge bg-primary">{{ user.analyses|length }}</span>
-                                        <br><small class="text-muted">análisis</small>
+                                <td class="text-center">
+                                    <div>
+                                        <span class="badge bg-primary" title="Total de análisis">{{ user.total_analyses }}</span>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ user.sessions_count }} sujetos | {{ user.self_analyses_count }} propios
+                                        </small>
                                     </div>
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
-                                        <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" 
+                                        <a href="{{ url_for('main.user_detail', user_id=user.id) }}" 
                                            class="btn btn-sm btn-outline-info" title="Ver detalle">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="{{ url_for('admin_edit_user', user_id=user.id) }}" 
+                                        <a href="{{ url_for('main.edit_user', user_id=user.id) }}" 
                                            class="btn btn-sm btn-outline-warning" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         {% if user.id != session.user_id %}
-                                        <button type="button" class="btn btn-sm btn-outline-{{ 'secondary' if user.status == 'active' else 'success' }}" 
-                                                onclick="toggleUserStatus({{ user.id }}, '{{ user.username }}', '{{ user.status }}')"
-                                                title="{{ 'Desactivar' if user.status == 'active' else 'Activar' }} usuario">
-                                            <i class="bi bi-{{ 'pause' if user.status == 'active' else 'play' }}-circle"></i>
+                                        <button type="button" class="btn btn-sm btn-outline-{{ 'secondary' if user.is_active else 'success' }}" 
+                                                onclick="toggleUserStatus({{ user.id }}, '{{ user.username }}', {{ 'true' if user.is_active else 'false' }})"
+                                                title="{{ 'Desactivar' if user.is_active else 'Activar' }} usuario">
+                                            <i class="bi bi-{{ 'pause' if user.is_active else 'play' }}-circle"></i>
                                         </button>
                                         {% endif %}
                                     </div>
@@ -166,27 +174,25 @@
                             {% if users.has_prev %}
                             <li class="page-item">
                                 <a class="page-link bg-transparent border-secondary text-light" 
-                                   href="{{ url_for('admin_users', page=users.prev_num, search=search, status=status_filter) }}">
+                                   href="{{ url_for('main.users', page=users.prev_num, search=search, role=role_filter, status=status_filter) }}">
                                     <i class="bi bi-chevron-left"></i>
                                 </a>
                             </li>
                             {% endif %}
                             
-                            {% for page_num in users.iter_pages() %}
-                                {% if page_num %}
-                                    {% if page_num != users.page %}
-                                    <li class="page-item">
-                                        <a class="page-link bg-transparent border-secondary text-light" 
-                                           href="{{ url_for('admin_users', page=page_num, search=search, status=status_filter) }}">
-                                            {{ page_num }}
-                                        </a>
-                                    </li>
-                                    {% else %}
-                                    <li class="page-item active">
-                                        <span class="page-link bg-biomech-cyan border-biomech-cyan">{{ page_num }}</span>
-                                    </li>
-                                    {% endif %}
-                                {% else %}
+                            {% for page_num in range(1, users.pages + 1) %}
+                                {% if page_num == users.page %}
+                                <li class="page-item active">
+                                    <span class="page-link bg-biomech-cyan border-biomech-cyan">{{ page_num }}</span>
+                                </li>
+                                {% elif page_num == 1 or page_num == users.pages or (page_num >= users.page - 2 and page_num <= users.page + 2) %}
+                                <li class="page-item">
+                                    <a class="page-link bg-transparent border-secondary text-light" 
+                                       href="{{ url_for('main.users', page=page_num, search=search, role=role_filter, status=status_filter) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                                {% elif page_num == users.page - 3 or page_num == users.page + 3 %}
                                 <li class="page-item disabled">
                                     <span class="page-link bg-transparent border-secondary text-muted">…</span>
                                 </li>
@@ -196,7 +202,7 @@
                             {% if users.has_next %}
                             <li class="page-item">
                                 <a class="page-link bg-transparent border-secondary text-light" 
-                                   href="{{ url_for('admin_users', page=users.next_num, search=search, status=status_filter) }}">
+                                   href="{{ url_for('main.users', page=users.next_num, search=search, role=role_filter, status=status_filter) }}">
                                     <i class="bi bi-chevron-right"></i>
                                 </a>
                             </li>
@@ -212,13 +218,13 @@
                     <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
                     <h4 class="text-muted mt-3">No se encontraron usuarios</h4>
                     <p class="text-muted">
-                        {% if search or status_filter != 'all' %}
+                        {% if search or status_filter != 'all' or role_filter != 'all' %}
                             Intenta cambiar los filtros de búsqueda.
                         {% else %}
                             Crea el primer usuario del sistema.
                         {% endif %}
                     </p>
-                    <a href="{{ url_for('admin_create_user') }}" class="biomech-button mt-3">
+                    <a href="{{ url_for('auth.register') }}" class="biomech-button mt-3">
                         <i class="bi bi-person-plus"></i> Crear Usuario
                     </a>
                 </div>
@@ -298,8 +304,7 @@
 </style>
 
 <script>
-function toggleUserStatus(userId, username, currentStatus) {
-    const isActive = currentStatus === 'active';
+function toggleUserStatus(userId, username, isActive) {
     const action = isActive ? 'desactivar' : 'activar';
     const newStatus = isActive ? 'inactivo' : 'activo';
     
@@ -308,7 +313,7 @@ function toggleUserStatus(userId, username, currentStatus) {
          <small class="text-muted">El usuario quedará ${newStatus} en el sistema.</small>`;
     
     const form = document.getElementById('statusForm');
-    form.action = `/admin/users/${userId}/toggle-status`;
+    form.action = `{{ url_for('main.users') }}/${userId}/toggle-status`;
     
     const confirmBtn = document.getElementById('confirmBtn');
     confirmBtn.className = `btn btn-${isActive ? 'warning' : 'success'}`;

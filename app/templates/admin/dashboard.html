@@ -5,17 +5,22 @@
 {% block content %}
 <div class="fade-in">
     <!-- 🎯 HEADER ADMINISTRATIVO -->
-    <div class="row mb-5">
+    <div class="row mb-4">
         <div class="col-12">
             <div class="dashboard-hero admin-hero">
                 <div class="hero-content">
-                    <h1 class="hero-title">
-                        <span class="gradient-text">Panel de Administración</span>
-                        <span class="hero-subtitle">Sistema BioTrack</span>
-                    </h1>
-                    <p class="hero-description">
-                        Gestión y control del sistema de análisis biomecánico educativo
-                    </p>
+                    <div class="hero-text">
+                        <h1 class="hero-title">
+                            <span class="gradient-text">Panel de Administración</span>
+                        </h1>
+                        <p class="hero-description">
+                            Sistema de Análisis Biomecánico Educativo
+                            <br>
+                            <small class="text-muted">
+                                Universidad del Valle - Carrera Biomédica - Materia Biomecánica
+                            </small>
+                        </p>
+                    </div>
                     
                     <div class="hero-actions">
                         <a href="{{ url_for('auth.register') }}" class="hero-button primary">
@@ -24,7 +29,7 @@
                         </a>
                         <a href="{{ url_for('main.users') }}" class="hero-button secondary">
                             <i class="bi bi-people"></i>
-                            <span>Gestionar Usuarios</span>
+                            <span>Ver Usuarios</span>
                         </a>
                     </div>
                 </div>
@@ -32,79 +37,333 @@
         </div>
     </div>
 
-    <!-- Métricas del Sistema -->
-    <div class="metrics-section">
-        <div class="metric-card-modern">
-            <i class="bi bi-people metric-icon"></i>
-            <div class="metric-info">
-                <div class="metric-value" data-target="{{ stats.total_users|default(0) }}">0</div>
-                <div class="metric-label">Usuarios</div>
+    <!-- 📊 MÉTRICAS PRINCIPALES -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card-admin">
+                <div class="metric-icon-wrapper students">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">{{ stats.total_students|default(0) }}</div>
+                    <div class="metric-label">Estudiantes</div>
+                </div>
             </div>
         </div>
         
-        <div class="metric-card-modern">
-            <i class="bi bi-person-check metric-icon"></i>
-            <div class="metric-info">
-                <div class="metric-value" data-target="{{ stats.active_users|default(0) }}">0</div>
-                <div class="metric-label">Activos</div>
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card-admin">
+                <div class="metric-icon-wrapper subjects">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">{{ stats.total_subjects|default(0) }}</div>
+                    <div class="metric-label">Sujetos</div>
+                </div>
             </div>
         </div>
         
-        <div class="metric-card-modern">
-            <i class="bi bi-activity metric-icon"></i>
-            <div class="metric-info">
-                <div class="metric-value" data-target="{{ stats.total_sessions|default(0) }}">0</div>
-                <div class="metric-label">Sesiones</div>
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card-admin">
+                <div class="metric-icon-wrapper analyses">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">{{ stats.total_analyses|default(0) }}</div>
+                    <div class="metric-label">Total Análisis</div>
+                </div>
             </div>
         </div>
         
-        <div class="metric-card-modern">
-            <i class="bi bi-clipboard-data metric-icon"></i>
-            <div class="metric-info">
-                <div class="metric-value" data-target="{{ stats.total_subjects|default(0) }}">0</div>
-                <div class="metric-label">Sujetos</div>
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card-admin">
+                <div class="metric-icon-wrapper recent">
+                    <i class="bi bi-lightning-fill"></i>
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">{{ stats.recent_analyses|default(0) }}</div>
+                    <div class="metric-label">Últimos 7 días</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Acciones Rápidas -->
-    <div class="quick-actions">
-        <h2 class="section-title">
-            <i class="bi bi-lightning-fill"></i>
-            Acciones Rápidas
-        </h2>
+    <!-- DESGLOSE DE ANÁLISIS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-info">
+                        <i class="bi bi-pie-chart-fill me-2"></i>
+                        Análisis por Segmento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if stats.segment_stats %}
+                        {% for seg in stats.segment_stats %}
+                        <div class="segment-stat-row mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="segment-name">
+                                    {% set seg_icons = {
+                                        'shoulder': 'bi-person-arms-up',
+                                        'elbow': 'bi-arrows-angle-contract',
+                                        'hip': 'bi-person-standing',
+                                        'knee': 'bi-leg',
+                                        'ankle': 'bi-footprints'
+                                    } %}
+                                    <i class="bi {{ seg_icons.get(seg.key, 'bi-circle') }} me-2"></i>
+                                    {{ seg.name }}
+                                </span>
+                                <span class="segment-count">
+                                    <strong>{{ seg.count }}</strong>
+                                    <small class="text-muted">({{ seg.percentage }}%)</small>
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                {% set seg_colors = {
+                                    'shoulder': '#0dcaf0',
+                                    'elbow': '#6f42c1',
+                                    'hip': '#20c997',
+                                    'knee': '#ffc107',
+                                    'ankle': '#dc3545'
+                                } %}
+                                <div class="progress-bar" 
+                                     style="width: {{ seg.percentage }}%; background-color: {{ seg_colors.get(seg.key, '#6c757d') }};">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-4 mb-2"></i>
+                            <p>No hay análisis registrados</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
         
-        <div class="actions-grid">
-            <a href="{{ url_for('main.users') }}" class="action-card">
-                <i class="bi bi-people-fill"></i>
-                <span>Gestionar Usuarios</span>
-            </a>
-            
-            <a href="{{ url_for('main.subjects') }}" class="action-card">
-                <i class="bi bi-clipboard-data"></i>
-                <span>Ver Sujetos</span>
-            </a>
-            
-            <a href="{{ url_for('main.sessions') }}" class="action-card">
-                <i class="bi bi-clock-history"></i>
-                <span>Historial</span>
-            </a>
-            
-            <a href="#" class="action-card featured" onclick="window.location.href='{{ url_for('main.segments') }}'; return false;">
-                <i class="bi bi-grid-3x3-gap"></i>
-                <span>Ver Ejercicios</span>
-            </a>
+        <div class="col-md-6">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-warning">
+                        <i class="bi bi-bar-chart-fill me-2"></i>
+                        Análisis por Ejercicio
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if stats.exercise_stats %}
+                        {% for ex in stats.exercise_stats[:6] %}
+                        <div class="exercise-stat-row mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="exercise-name">{{ ex.name }}</span>
+                                <span class="exercise-count">
+                                    <strong>{{ ex.count }}</strong>
+                                    <small class="text-muted">({{ ex.percentage }}%)</small>
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-warning" 
+                                     style="width: {{ ex.percentage }}%;">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-4 mb-2"></i>
+                            <p>No hay análisis registrados</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP ESTUDIANTES Y ACCIONES -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-success">
+                        <i class="bi bi-trophy-fill me-2"></i>
+                        Estudiantes Más Activos
+                    </h5>
+                    <a href="{{ url_for('main.users') }}" class="btn btn-sm btn-outline-success">
+                        Ver todos <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if stats.top_students %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-3">#</th>
+                                    <th>Estudiante</th>
+                                    <th class="text-center">Análisis</th>
+                                    <th class="text-center">Sujetos</th>
+                                    <th>Último Acceso</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in stats.top_students[:5] %}
+                                <tr>
+                                    <td class="ps-3">
+                                        {% if loop.index == 1 %}
+                                            <span class="badge bg-warning text-dark">🥇</span>
+                                        {% elif loop.index == 2 %}
+                                            <span class="badge bg-secondary">🥈</span>
+                                        {% elif loop.index == 3 %}
+                                            <span class="badge bg-danger">🥉</span>
+                                        {% else %}
+                                            <span class="text-muted">{{ loop.index }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="student-avatar me-2">
+                                                <i class="bi bi-person-circle"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ student.name }}</div>
+                                                <small class="text-muted">@{{ student.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary fs-6">{{ student.analyses }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info">{{ student.subjects }}</span>
+                                    </td>
+                                    <td>
+                                        {% if student.last_login %}
+                                            <small class="text-success">
+                                                {{ student.last_login[:10] }}
+                                            </small>
+                                        {% else %}
+                                            <small class="text-muted">Nunca</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-people display-4 mb-2"></i>
+                        <p>No hay actividad de estudiantes</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-primary">
+                        <i class="bi bi-lightning-fill me-2"></i>
+                        Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="{{ url_for('auth.register') }}" class="action-btn primary">
+                            <i class="bi bi-person-plus-fill"></i>
+                            <span>Crear Nuevo Estudiante</span>
+                        </a>
+                        
+                        <a href="{{ url_for('main.users') }}" class="action-btn secondary">
+                            <i class="bi bi-people-fill"></i>
+                            <span>Gestionar Usuarios</span>
+                        </a>
+                        
+                        <a href="{{ url_for('main.subjects') }}" class="action-btn info">
+                            <i class="bi bi-clipboard-data"></i>
+                            <span>Ver Todos los Sujetos</span>
+                        </a>
+                        
+                        <a href="{{ url_for('main.segments') }}" class="action-btn success">
+                            <i class="bi bi-play-circle-fill"></i>
+                            <span>Iniciar Análisis</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESUMEN DE TIPOS DE ANÁLISIS -->
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="bi bi-clipboard2-data me-2"></i>
+                        Resumen del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 col-6 mb-3 mb-md-0">
+                            <div class="summary-item">
+                                <div class="summary-icon text-info">
+                                    <i class="bi bi-person-badge-fill"></i>
+                                </div>
+                                <div class="summary-value">{{ stats.total_rom_sessions|default(0) }}</div>
+                                <div class="summary-label">Análisis de Sujetos</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3 mb-md-0">
+                            <div class="summary-item">
+                                <div class="summary-icon text-success">
+                                    <i class="bi bi-person-check-fill"></i>
+                                </div>
+                                <div class="summary-value">{{ stats.total_self_analyses|default(0) }}</div>
+                                <div class="summary-label">Auto-Análisis</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="summary-item">
+                                <div class="summary-icon text-warning">
+                                    <i class="bi bi-calendar-plus"></i>
+                                </div>
+                                <div class="summary-value">{{ stats.recent_subjects|default(0) }}</div>
+                                <div class="summary-label">Sujetos (7 días)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="summary-item">
+                                <div class="summary-icon text-danger">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div class="summary-value">
+                                    {% if stats.last_activity %}
+                                        {{ stats.last_activity[:10] }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </div>
+                                <div class="summary-label">Última Actividad</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <style>
+/* Hero Admin */
 .dashboard-hero.admin-hero {
-    background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(0, 212, 255, 0.2));
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(0, 212, 255, 0.15));
     border: 1px solid rgba(138, 43, 226, 0.3);
-    padding: 3rem 2rem;
-    border-radius: 20px;
-    margin-bottom: 2rem;
+    padding: 2rem;
+    border-radius: 16px;
     position: relative;
     overflow: hidden;
 }
@@ -116,7 +375,7 @@
     right: -10%;
     width: 300px;
     height: 300px;
-    background: radial-gradient(circle, rgba(138, 43, 226, 0.2), transparent);
+    background: radial-gradient(circle, rgba(138, 43, 226, 0.15), transparent);
     border-radius: 50%;
 }
 
@@ -130,25 +389,19 @@
     gap: 1.5rem;
 }
 
-.hero-title {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
 .gradient-text {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 700;
-    background: linear-gradient(135deg, var(--biomech-purple), var(--biomech-cyan));
+    background: linear-gradient(135deg, #8a2be2, #00d4ff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-.hero-subtitle {
-    font-size: 1.1rem;
-    color: var(--biomech-text-secondary);
-    font-weight: 400;
+.hero-description {
+    color: #adb5bd;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
 }
 
 .hero-actions {
@@ -157,10 +410,11 @@
 }
 
 .hero-button {
-    padding: 0.8rem 1.5rem;
-    border-radius: 12px;
+    padding: 0.7rem 1.2rem;
+    border-radius: 10px;
     text-decoration: none;
     font-weight: 600;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -168,7 +422,7 @@
 }
 
 .hero-button.primary {
-    background: linear-gradient(135deg, var(--biomech-cyan), var(--biomech-purple));
+    background: linear-gradient(135deg, #00d4ff, #8a2be2);
     color: white;
 }
 
@@ -179,136 +433,176 @@
 
 .hero-button.secondary {
     background: rgba(0, 212, 255, 0.1);
-    color: var(--biomech-cyan);
-    border: 1px solid var(--biomech-cyan);
+    color: #00d4ff;
+    border: 1px solid #00d4ff;
 }
 
 .hero-button.secondary:hover {
     background: rgba(0, 212, 255, 0.2);
-    transform: translateY(-2px);
 }
 
-/* Sección de Métricas */
-.metrics-section {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 3rem;
-}
-
-.metric-card-modern {
-    background: var(--biomech-glass);
-    border: 1px solid rgba(0, 212, 255, 0.2);
-    border-radius: 16px;
-    padding: 1.5rem;
+/* Metric Cards Admin */
+.metric-card-admin {
+    background: rgba(30, 30, 50, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.25rem;
     display: flex;
     align-items: center;
     gap: 1rem;
     transition: all 0.3s ease;
 }
 
-.metric-card-modern:hover {
-    transform: translateY(-5px);
-    border-color: var(--biomech-cyan);
-    box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+.metric-card-admin:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
-.metric-icon {
-    font-size: 2.5rem;
-    color: var(--biomech-cyan);
+.metric-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
 }
 
-.metric-info {
-    flex: 1;
+.metric-icon-wrapper.students {
+    background: linear-gradient(135deg, rgba(13, 202, 240, 0.2), rgba(13, 202, 240, 0.1));
+    color: #0dcaf0;
 }
 
-.metric-value {
-    font-size: 2rem;
+.metric-icon-wrapper.subjects {
+    background: linear-gradient(135deg, rgba(111, 66, 193, 0.2), rgba(111, 66, 193, 0.1));
+    color: #6f42c1;
+}
+
+.metric-icon-wrapper.analyses {
+    background: linear-gradient(135deg, rgba(25, 135, 84, 0.2), rgba(25, 135, 84, 0.1));
+    color: #198754;
+}
+
+.metric-icon-wrapper.recent {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 193, 7, 0.1));
+    color: #ffc107;
+}
+
+.metric-content .metric-value {
+    font-size: 1.75rem;
     font-weight: 700;
     color: white;
     line-height: 1;
 }
 
-.metric-label {
-    font-size: 0.9rem;
-    color: var(--biomech-text-secondary);
+.metric-content .metric-label {
+    font-size: 0.85rem;
+    color: #adb5bd;
     margin-top: 0.25rem;
 }
 
-/* Sección de Acciones */
-.quick-actions {
-    margin-bottom: 2rem;
+/* Segment Stats */
+.segment-name {
+    color: #e9ecef;
+    font-size: 0.95rem;
 }
 
-.section-title {
-    color: var(--biomech-cyan);
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
+.segment-count {
+    color: #e9ecef;
+}
+
+.exercise-name {
+    color: #e9ecef;
+    font-size: 0.95rem;
+}
+
+.exercise-count {
+    color: #e9ecef;
+}
+
+/* Action Buttons */
+.action-btn {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.actions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-}
-
-.action-card {
-    background: var(--biomech-glass);
-    border: 1px solid rgba(0, 212, 255, 0.2);
-    border-radius: 16px;
-    padding: 2rem;
-    text-align: center;
-    text-decoration: none;
-    color: var(--biomech-cyan);
-    display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 500;
     transition: all 0.3s ease;
 }
 
-.action-card:hover {
-    transform: translateY(-5px);
-    border-color: var(--biomech-cyan);
-    box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
-    color: var(--biomech-cyan);
+.action-btn i {
+    font-size: 1.25rem;
 }
 
-.action-card i {
-    font-size: 2.5rem;
+.action-btn.primary {
+    background: linear-gradient(135deg, rgba(13, 202, 240, 0.2), rgba(13, 202, 240, 0.1));
+    color: #0dcaf0;
+    border: 1px solid rgba(13, 202, 240, 0.3);
 }
 
-.action-card span {
-    font-weight: 600;
-    font-size: 1rem;
+.action-btn.secondary {
+    background: linear-gradient(135deg, rgba(111, 66, 193, 0.2), rgba(111, 66, 193, 0.1));
+    color: #6f42c1;
+    border: 1px solid rgba(111, 66, 193, 0.3);
 }
 
-.action-card.featured {
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(138, 43, 226, 0.2));
-    border-color: var(--biomech-purple);
+.action-btn.info {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 193, 7, 0.1));
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
 }
 
-.action-card.featured:hover {
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(138, 43, 226, 0.3));
+.action-btn.success {
+    background: linear-gradient(135deg, rgba(25, 135, 84, 0.2), rgba(25, 135, 84, 0.1));
+    color: #198754;
+    border: 1px solid rgba(25, 135, 84, 0.3);
+}
+
+.action-btn:hover {
+    transform: translateX(5px);
+}
+
+/* Student Avatar */
+.student-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(13, 202, 240, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0dcaf0;
+    font-size: 1.25rem;
+}
+
+/* Summary Items */
+.summary-item {
+    padding: 1rem;
+}
+
+.summary-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.summary-label {
+    font-size: 0.85rem;
+    color: #adb5bd;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .dashboard-hero.admin-hero {
-        padding: 2rem 1.5rem;
-    }
-    
     .hero-content {
         flex-direction: column;
         align-items: flex-start;
-    }
-    
-    .gradient-text {
-        font-size: 1.5rem;
     }
     
     .hero-actions {
@@ -321,12 +615,8 @@
         justify-content: center;
     }
     
-    .metrics-section {
-        grid-template-columns: 1fr;
-    }
-    
-    .actions-grid {
-        grid-template-columns: 1fr;
+    .gradient-text {
+        font-size: 1.5rem;
     }
 }
 </style>
@@ -334,32 +624,33 @@
 
 {% block scripts %}
 <script>
-// Animación de contadores
 document.addEventListener('DOMContentLoaded', function() {
+    // Animación de contadores
     const metricValues = document.querySelectorAll('.metric-value');
     
     metricValues.forEach(metric => {
-        const target = parseInt(metric.dataset.target) || 0;
-        let current = 0;
-        const increment = target / 30;
-        const duration = 1500;
-        const stepTime = duration / 30;
+        const text = metric.textContent.trim();
+        const target = parseInt(text) || 0;
         
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                metric.textContent = target;
-                clearInterval(timer);
-            } else {
-                metric.textContent = Math.floor(current);
-            }
-        }, stepTime);
+        if (target > 0) {
+            let current = 0;
+            const increment = target / 25;
+            const duration = 1000;
+            const stepTime = duration / 25;
+            
+            metric.textContent = '0';
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    metric.textContent = target;
+                    clearInterval(timer);
+                } else {
+                    metric.textContent = Math.floor(current);
+                }
+            }, stepTime);
+        }
     });
 });
-
-// Mostrar mensaje de funcionalidad futura
-function showComingSoon(feature) {
-    alert('⚠️ Funcionalidad futura a implementar\n\n' + feature + ' estará disponible próximamente.');
-}
 </script>
 {% endblock %}

@@ -1,0 +1,1052 @@
+<!--
+📹 PANEL DE CONTROL DE ALTURA DE CÁMARA
+========================================
+Componente para mostrar y controlar la altura de cámara basado en 
+proporciones Drillis-Contini.
+
+Variables requeridas del contexto:
+- segment_type: str (ej: 'shoulder', 'elbow')
+- segment_name: str (ej: 'Hombro', 'Codo')
+- user_height_cm: float (altura del usuario)
+- is_height_temporary: bool (si es altura temporal o de BD)
+- camera_height_info: dict con:
+  - calculated_height_mm: int
+  - calculated_height_cm: float
+  - is_reachable: bool
+  - message: str
+  - proportion_ratio: float
+
+Autor: BIOTRACK Team
+Fecha: 2025-12-01
+-->
+
+<div class="camera-height-panel">
+    <div class="panel-header">
+        <h5><i class="bi bi-camera-video"></i> Control de Altura de Cámara</h5>
+        <div class="arduino-controls">
+            <span id="arduinoStatus" class="status-badge status-checking">
+                <i class="bi bi-circle-fill"></i> <span class="status-text">Verificando...</span>
+            </span>
+            <button type="button" 
+                    class="btn btn-sm btn-arduino-toggle" 
+                    id="btnArduinoConnect"
+                    onclick="toggleArduinoConnection()"
+                    title="Conectar/Desconectar Arduino">
+                <i class="bi bi-plug"></i>
+                <span class="btn-text">Conectar</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="panel-body">
+        <!-- Altura del Usuario -->
+        <div class="height-input-group">
+            <label for="userHeightInput">
+                <i class="bi bi-rulers"></i> Tu altura (cm)
+            </label>
+            <div class="input-with-badge">
+                <input type="number" 
+                       id="userHeightInput" 
+                       class="form-control" 
+                       min="100" 
+                       max="250" 
+                       step="1"
+                       value="{{ user_height_cm | default(170) }}"
+                       placeholder="Ej: 175">
+                <span id="heightSourceBadge" class="source-badge {% if is_height_temporary %}temporary{% else %}database{% endif %}">
+                    {{ 'Temporal' if is_height_temporary else 'BD' }}
+                </span>
+            </div>
+            <div class="height-actions">
+                <button type="button" class="btn btn-sm btn-apply" onclick="applyTemporaryHeight()">
+                    <i class="bi bi-check-lg"></i> Aplicar
+                </button>
+                <button type="button" 
+                        class="btn btn-sm btn-reset" 
+                        onclick="resetToDbHeight()" 
+                        id="btnResetHeight"
+                        {% if not is_height_temporary %}disabled{% endif %}>
+                    <i class="bi bi-arrow-counterclockwise"></i> Restaurar BD
+                </button>
+            </div>
+            <small class="height-hint">
+                <i class="bi bi-info-circle"></i>
+                Esta altura se usa para calcular la posición óptima de la cámara.
+                {% if is_height_temporary %}
+                <strong>(Usando valor temporal)</strong>
+                {% endif %}
+            </small>
+        </div>
+        
+        <!-- Altura Calculada para el Segmento -->
+        <div class="calculated-height">
+            <div class="calc-header">
+                <span class="calc-label">Altura de cámara para <strong>{{ segment_name }}</strong>:</span>
+                <span class="calc-formula">
+                    <i class="bi bi-calculator"></i>
+                    {{ user_height_cm | default(170) }}cm × {{ (camera_height_info.proportion_ratio * 100) | round(1) if camera_height_info else 81.8 }}%
+                </span>
+            </div>
+            <div class="calc-value">
+                <span id="calculatedHeightCm">{{ camera_height_info.calculated_height_cm | default(143.2) }}</span>
+                <span class="calc-unit">cm</span>
+                <small class="calc-mm">(<span id="calculatedHeightMm">{{ camera_height_info.calculated_height_mm | default(1432) }}</span> mm)</small>
+            </div>
+            {% if camera_height_info and not camera_height_info.is_reachable %}
+            <div class="calc-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                {{ camera_height_info.message }}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Controles de Cámara -->
+        <div class="camera-controls">
+            <button type="button" 
+                    class="btn btn-move" 
+                    onclick="moveCameraToSegment()" 
+                    id="btnMoveCamera"
+                    title="Mover cámara a la altura calculada">
+                <i class="bi bi-arrows-expand-vertical"></i>
+                <span>Posicionar Cámara</span>
+            </button>
+            <button type="button" 
+                    class="btn btn-stop" 
+                    onclick="stopCamera()"
+                    title="Detener movimiento">
+                <i class="bi bi-stop-fill"></i>
+            </button>
+            <button type="button" 
+                    class="btn btn-home" 
+                    onclick="cameraHome()"
+                    title="Ir a posición inicial (mínima)">
+                <i class="bi bi-house"></i>
+            </button>
+        </div>
+        
+        <!-- Estado Actual -->
+        <div class="current-status">
+            <div class="status-row">
+                <span class="status-label">Altura actual:</span>
+                <span class="status-value"><span id="currentHeight">--</span> mm</span>
+            </div>
+            <div id="movingIndicator" class="moving-indicator" style="display: none;">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Moviendo...</span>
+                </div>
+                <span>Moviendo cámara...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ============================================================================
+   PANEL DE CONTROL DE ALTURA DE CÁMARA
+   ============================================================================ */
+
+.camera-height-panel {
+    background: linear-gradient(135deg, 
+        rgba(0, 20, 40, 0.9) 0%, 
+        rgba(0, 40, 60, 0.85) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.panel-header h5 {
+    color: var(--biomech-cyan, #00d4ff);
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Status Badge */
+.status-badge {
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.status-badge i {
+    font-size: 0.5rem;
+}
+
+.status-checking {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.status-disconnected {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.status-connected {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+/* Arduino Controls Container */
+.arduino-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-arduino-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    background: rgba(0, 212, 255, 0.15);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    color: var(--biomech-cyan, #00d4ff);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-arduino-toggle:hover {
+    background: rgba(0, 212, 255, 0.3);
+    color: white;
+}
+
+.btn-arduino-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-arduino-toggle.connected {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+.btn-arduino-toggle.connected:hover {
+    background: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}
+
+/* Altura Input */
+.height-input-group {
+    margin-bottom: 1rem;
+}
+
+.height-input-group label {
+    display: block;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+}
+
+.input-with-badge {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.input-with-badge input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.input-with-badge input:focus {
+    outline: none;
+    border-color: var(--biomech-cyan, #00d4ff);
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+}
+
+.source-badge {
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.source-badge.database {
+    background: rgba(0, 212, 255, 0.2);
+    color: var(--biomech-cyan, #00d4ff);
+}
+
+.source-badge.temporary {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fbbf24;
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.height-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.height-actions .btn {
+    flex: 1;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    transition: all 0.2s ease;
+}
+
+.btn-apply {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #22c55e;
+}
+
+.btn-apply:hover {
+    background: rgba(34, 197, 94, 0.35);
+    color: #22c55e;
+    transform: translateY(-1px);
+}
+
+.btn-reset {
+    background: rgba(107, 114, 128, 0.2);
+    border: 1px solid rgba(107, 114, 128, 0.4);
+    color: #9ca3af;
+}
+
+.btn-reset:hover:not(:disabled) {
+    background: rgba(107, 114, 128, 0.35);
+    color: #d1d5db;
+}
+
+.btn-reset:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.height-hint {
+    display: block;
+    margin-top: 0.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+}
+
+.height-hint strong {
+    color: #fbbf24;
+}
+
+/* Altura Calculada */
+.calculated-height {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.calc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.calc-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.calc-formula {
+    color: rgba(0, 212, 255, 0.7);
+    font-size: 0.75rem;
+    background: rgba(0, 212, 255, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+.calc-value {
+    color: var(--biomech-cyan, #00d4ff);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.calc-unit {
+    font-size: 1.2rem;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+.calc-mm {
+    display: block;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    font-weight: 400;
+    margin-top: 0.25rem;
+}
+
+.calc-warning {
+    margin-top: 0.75rem;
+    padding: 0.6rem;
+    background: rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    color: #fbbf24;
+    font-size: 0.8rem;
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.calc-warning i {
+    margin-top: 0.1rem;
+}
+
+/* Controles de Cámara */
+.camera-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.camera-controls .btn {
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+}
+
+.btn-move {
+    flex: 2;
+    background: linear-gradient(135deg, 
+        var(--biomech-cyan, #00d4ff) 0%, 
+        var(--biomech-purple, #a855f7) 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+}
+
+.btn-move:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+    color: white;
+}
+
+.btn-move:active {
+    transform: translateY(0);
+}
+
+.btn-stop {
+    flex: 1;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+.btn-stop:hover {
+    background: rgba(239, 68, 68, 0.35);
+    color: #ef4444;
+}
+
+.btn-home {
+    flex: 1;
+    background: rgba(107, 114, 128, 0.2);
+    border: 1px solid rgba(107, 114, 128, 0.4);
+    color: #9ca3af;
+}
+
+.btn-home:hover {
+    background: rgba(107, 114, 128, 0.35);
+    color: #d1d5db;
+}
+
+/* Estado Actual */
+.current-status {
+    text-align: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-label {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+}
+
+.status-value {
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.moving-indicator {
+    margin-top: 0.5rem;
+    color: var(--biomech-cyan, #00d4ff);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .camera-height-panel {
+        padding: 1rem;
+    }
+    
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .camera-controls {
+        flex-wrap: wrap;
+    }
+    
+    .btn-move {
+        flex: 1 1 100%;
+    }
+    
+    .btn-stop, .btn-home {
+        flex: 1;
+    }
+    
+    .calc-header {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+
+<script>
+// ============================================================================
+// CONTROL DE ALTURA DE CÁMARA - JavaScript
+// ============================================================================
+
+// Variables globales
+const CAMERA_CONTROL = {
+    segment: '{{ segment_type }}',
+    segmentName: '{{ segment_name }}',
+    isMoving: false,
+    isConnected: false,
+    isInitializing: false,  // True durante conexión inicial (HOME automático)
+    statusCheckInterval: null
+};
+
+// Inicialización cuando el DOM está listo
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar estado inicial del Arduino
+    updateArduinoStatus();
+    
+    // Actualizar estado cada 5 segundos
+    CAMERA_CONTROL.statusCheckInterval = setInterval(updateArduinoStatus, 5000);
+    
+    // Limpiar intervalo cuando se sale de la página
+    window.addEventListener('beforeunload', function() {
+        if (CAMERA_CONTROL.statusCheckInterval) {
+            clearInterval(CAMERA_CONTROL.statusCheckInterval);
+        }
+    });
+});
+
+// ============================================================================
+// FUNCIONES DE ESTADO
+// ============================================================================
+
+function updateArduinoStatus() {
+    fetch('/api/hardware/camera/status')
+        .then(response => response.json())
+        .then(data => {
+            const statusBadge = document.getElementById('arduinoStatus');
+            const statusText = statusBadge.querySelector('.status-text');
+            const currentHeight = document.getElementById('currentHeight');
+            const connectBtn = document.getElementById('btnArduinoConnect');
+            const btnText = connectBtn.querySelector('.btn-text');
+            const btnIcon = connectBtn.querySelector('i');
+            
+            if (data.arduino_connected) {
+                statusBadge.className = 'status-badge status-connected';
+                statusText.textContent = 'Conectado';
+                currentHeight.textContent = data.current_height_mm || '--';
+                
+                // Actualizar botón a "Desconectar"
+                connectBtn.className = 'btn btn-sm btn-arduino-toggle connected';
+                btnText.textContent = 'Desconectar';
+                btnIcon.className = 'bi bi-plug-fill';
+                CAMERA_CONTROL.isConnected = true;
+            } else {
+                statusBadge.className = 'status-badge status-disconnected';
+                statusText.textContent = 'Desconectado';
+                currentHeight.textContent = '--';
+                
+                // Actualizar botón a "Conectar"
+                connectBtn.className = 'btn btn-sm btn-arduino-toggle';
+                btnText.textContent = 'Conectar';
+                btnIcon.className = 'bi bi-plug';
+                CAMERA_CONTROL.isConnected = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error obteniendo estado:', err);
+            const statusBadge = document.getElementById('arduinoStatus');
+            const statusText = statusBadge.querySelector('.status-text');
+            statusBadge.className = 'status-badge status-disconnected';
+            statusText.textContent = 'Error';
+            CAMERA_CONTROL.isConnected = false;
+        });
+}
+
+// ============================================================================
+// FUNCIONES DE CONEXIÓN ARDUINO
+// ============================================================================
+
+function toggleArduinoConnection() {
+    const btn = document.getElementById('btnArduinoConnect');
+    btn.disabled = true;
+    
+    if (CAMERA_CONTROL.isConnected) {
+        // Desconectar
+        disconnectArduino(btn);
+    } else {
+        // Conectar
+        connectArduino(btn);
+    }
+}
+
+function connectArduino(btn) {
+    // Bloquear botones durante inicialización
+    CAMERA_CONTROL.isInitializing = true;
+    setControlButtonsEnabled(false);
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Conectando...';
+    showMovingIndicator(true);
+    document.getElementById('movingIndicator').querySelector('span').textContent = 'Conectando y yendo a posición inicial...';
+    
+    fetch('/api/hardware/camera/connect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('success', data.message || 'Arduino conectado');
+            updateArduinoStatus();
+        } else {
+            showToast('error', data.message || 'Error al conectar Arduino');
+        }
+    })
+    .catch(err => {
+        console.error('Error conectando:', err);
+        showToast('error', 'Error de conexión con el servidor');
+    })
+    .finally(() => {
+        // Siempre rehabilitar todo al terminar
+        CAMERA_CONTROL.isInitializing = false;
+        setControlButtonsEnabled(true);
+        showMovingIndicator(false);
+        btn.innerHTML = '<i class="bi bi-plug me-1"></i>Conectar';
+        btn.disabled = false;
+    });
+}
+
+// Función helper para habilitar/deshabilitar botones de control
+function setControlButtonsEnabled(enabled) {
+    const buttons = [
+        document.getElementById('btnPositionCamera'),
+        document.getElementById('btnCameraHome'),
+        document.getElementById('btnStopCamera')
+    ];
+    buttons.forEach(btn => {
+        if (btn) btn.disabled = !enabled;
+    });
+}
+
+function disconnectArduino(btn) {
+    fetch('/api/hardware/camera/disconnect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('info', data.message || 'Arduino desconectado');
+            updateArduinoStatus();
+        } else {
+            showToast('error', data.message || 'Error al desconectar');
+        }
+    })
+    .catch(err => {
+        console.error('Error desconectando:', err);
+        showToast('error', 'Error de conexión con el servidor');
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+// ============================================================================
+// FUNCIONES DE ALTURA DE USUARIO
+// ============================================================================
+
+function applyTemporaryHeight() {
+    const input = document.getElementById('userHeightInput');
+    const height = parseFloat(input.value);
+    
+    if (isNaN(height) || height < 100 || height > 250) {
+        showToast('error', 'Por favor ingresa una altura válida (100-250 cm)');
+        input.focus();
+        return;
+    }
+    
+    // Deshabilitar botón mientras procesa
+    const btn = event.target.closest('.btn');
+    btn.disabled = true;
+    
+    fetch('/api/hardware/user-height', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({height_cm: height})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Actualizar UI
+            updateHeightBadge(true);
+            updateCalculatedHeight(height);
+            showToast('success', `Altura temporal establecida: ${height} cm`);
+            
+            // Habilitar botón de restaurar
+            document.getElementById('btnResetHeight').disabled = false;
+        } else {
+            showToast('error', data.message || 'Error al establecer altura');
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showToast('error', 'Error de conexión');
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+function resetToDbHeight() {
+    const btn = event.target.closest('.btn');
+    btn.disabled = true;
+    
+    fetch('/api/hardware/user-height/reset', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Actualizar input con valor de BD
+            document.getElementById('userHeightInput').value = data.height_cm;
+            updateHeightBadge(false);
+            updateCalculatedHeight(data.height_cm);
+            showToast('success', 'Altura restaurada al valor de la base de datos');
+        } else {
+            showToast('error', data.message || 'Error al restaurar altura');
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showToast('error', 'Error de conexión');
+        btn.disabled = false;
+    });
+}
+
+function updateHeightBadge(isTemporary) {
+    const badge = document.getElementById('heightSourceBadge');
+    if (isTemporary) {
+        badge.className = 'source-badge temporary';
+        badge.textContent = 'Temporal';
+    } else {
+        badge.className = 'source-badge database';
+        badge.textContent = 'BD';
+    }
+}
+
+function updateCalculatedHeight(userHeightCm) {
+    // Obtener info actualizada del segmento
+    fetch(`/api/hardware/camera/segment-info/${CAMERA_CONTROL.segment}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('calculatedHeightCm').textContent = data.calculated_height_cm;
+                document.getElementById('calculatedHeightMm').textContent = data.calculated_height_mm;
+            }
+        })
+        .catch(err => console.error('Error actualizando altura calculada:', err));
+}
+
+// ============================================================================
+// FUNCIONES DE CONTROL DE CÁMARA
+// ============================================================================
+
+function moveCameraToSegment() {
+    // Durante inicialización, no permitir movimiento
+    if (CAMERA_CONTROL.isInitializing) {
+        showToast('warning', 'Espere a que termine la inicialización');
+        return;
+    }
+    
+    if (CAMERA_CONTROL.isMoving) {
+        showToast('warning', 'La cámara ya está en movimiento');
+        return;
+    }
+    
+    CAMERA_CONTROL.isMoving = true;
+    showMovingIndicator(true);
+    
+    const btn = document.getElementById('btnMoveCamera');
+    btn.disabled = true;
+    
+    fetch('/api/hardware/camera/move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({segment: CAMERA_CONTROL.segment})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('success', data.message);
+            document.getElementById('currentHeight').textContent = data.current_height_mm;
+        } else {
+            showToast('error', data.message);
+            
+            // Si no hay Arduino, mostrar la altura calculada de todas formas
+            if (!data.arduino_connected && data.target_height_mm) {
+                showToast('info', `Altura calculada: ${data.target_height_mm}mm (${data.target_height_mm/10}cm)`);
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showToast('error', 'Error de conexión al mover cámara');
+    })
+    .finally(() => {
+        CAMERA_CONTROL.isMoving = false;
+        showMovingIndicator(false);
+        btn.disabled = false;
+        updateArduinoStatus();
+    });
+}
+
+function stopCamera() {
+    // Durante inicialización (HOME automático al conectar), no permitir STOP
+    if (CAMERA_CONTROL.isInitializing) {
+        showToast('warning', 'Espere a que termine la inicialización');
+        return;
+    }
+    
+    fetch('/api/hardware/camera/stop', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar altura donde se detuvo
+            const heightMm = data.current_height_mm || 0;
+            const heightCm = (heightMm / 10).toFixed(1);
+            if (heightMm > 0) {
+                showToast('info', `Motor detenido en ${heightMm}mm (${heightCm}cm)`);
+                document.getElementById('currentHeight').textContent = heightMm;
+            } else {
+                showToast('info', 'Motor detenido');
+            }
+        } else {
+            showToast('warning', data.message);
+        }
+        
+        CAMERA_CONTROL.isMoving = false;
+        showMovingIndicator(false);
+        updateArduinoStatus();
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showToast('error', 'Error al detener motor');
+    });
+}
+
+function cameraHome() {
+    // Durante inicialización, no permitir otro HOME
+    if (CAMERA_CONTROL.isInitializing) {
+        showToast('warning', 'Espere a que termine la inicialización');
+        return;
+    }
+    
+    if (CAMERA_CONTROL.isMoving) {
+        showToast('warning', 'Espera a que termine el movimiento actual');
+        return;
+    }
+    
+    CAMERA_CONTROL.isMoving = true;
+    showMovingIndicator(true);
+    
+    fetch('/api/hardware/camera/home', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('success', 'Cámara en posición inicial');
+            document.getElementById('currentHeight').textContent = data.current_height_mm;
+        } else {
+            showToast('error', data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showToast('error', 'Error al ir a posición inicial');
+    })
+    .finally(() => {
+        CAMERA_CONTROL.isMoving = false;
+        showMovingIndicator(false);
+        updateArduinoStatus();
+    });
+}
+
+// ============================================================================
+// UTILIDADES UI
+// ============================================================================
+
+function showMovingIndicator(show) {
+    const indicator = document.getElementById('movingIndicator');
+    indicator.style.display = show ? 'flex' : 'none';
+}
+
+function showToast(type, message) {
+    // Verificar si existe la función global de toast
+    if (typeof window.showToastMessage === 'function') {
+        window.showToastMessage(type, message);
+        return;
+    }
+    
+    // Fallback: crear toast simple
+    const toastContainer = document.getElementById('toast-container') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-message toast-${type}`;
+    toast.innerHTML = `
+        <i class="bi bi-${getToastIcon(type)}"></i>
+        <span>${message}</span>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Animar entrada
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Remover después de 4 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    `;
+    document.body.appendChild(container);
+    return container;
+}
+
+function getToastIcon(type) {
+    const icons = {
+        success: 'check-circle-fill',
+        error: 'x-circle-fill',
+        warning: 'exclamation-triangle-fill',
+        info: 'info-circle-fill'
+    };
+    return icons[type] || 'info-circle-fill';
+}
+</script>
+
+<style>
+/* Estilos para Toast fallback */
+.toast-message {
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.toast-message.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-success { background: rgba(34, 197, 94, 0.95); }
+.toast-error { background: rgba(239, 68, 68, 0.95); }
+.toast-warning { background: rgba(245, 158, 11, 0.95); }
+.toast-info { background: rgba(59, 130, 246, 0.95); }
+</style>

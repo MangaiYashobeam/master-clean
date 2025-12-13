@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar' if is_edit else 'Nuevo' }} Sujeto - BioTrack{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.subjects') }}" class="text-decoration-none">
+                            <i class="bi bi-people me-1"></i>Sujetos
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {{ 'Editar Sujeto' if is_edit else 'Nuevo Sujeto' }}
+                    </li>
+                </ol>
+            </nav>
+            
+            <h2 class="mb-1">
+                <i class="bi bi-{{ 'pencil-square' if is_edit else 'person-plus-fill' }} text-primary me-2"></i>
+                {{ 'Editar Sujeto de Estudio' if is_edit else 'Registrar Nuevo Sujeto' }}
+            </h2>
+            <p class="text-muted mb-0">
+                {% if is_edit %}
+                Modifica los datos del sujeto <strong>{{ subject.subject_code }}</strong>
+                {% else %}
+                Completa los datos para registrar un nuevo sujeto de estudio
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clipboard-data me-2"></i>
+                        Información del Sujeto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="subjectForm">
+                        <!-- Información Personal -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-info border-bottom border-info pb-2 mb-3">
+                                    <i class="bi bi-person-vcard me-2"></i>
+                                    Datos Personales
+                                </h6>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">
+                                    Nombre <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control bg-dark text-white border-secondary" 
+                                       id="first_name" 
+                                       name="first_name"
+                                       value="{{ subject.first_name if subject else '' }}"
+                                       placeholder="Ej: Juan"
+                                       required
+                                       maxlength="100">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">
+                                    Apellido <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control bg-dark text-white border-secondary" 
+                                       id="last_name" 
+                                       name="last_name"
+                                       value="{{ subject.last_name if subject else '' }}"
+                                       placeholder="Ej: Pérez García"
+                                       required
+                                       maxlength="100">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="gender" class="form-label">Género</label>
+                                <select class="form-select bg-dark text-white border-secondary" 
+                                        id="gender" 
+                                        name="gender">
+                                    <option value="">-- Seleccionar --</option>
+                                    <option value="M" {{ 'selected' if subject and subject.gender == 'M' else '' }}>
+                                        Masculino
+                                    </option>
+                                    <option value="F" {{ 'selected' if subject and subject.gender == 'F' else '' }}>
+                                        Femenino
+                                    </option>
+                                    <option value="Other" {{ 'selected' if subject and subject.gender == 'Other' else '' }}>
+                                        Otro
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="date_of_birth" class="form-label">Fecha de Nacimiento</label>
+                                <input type="date" 
+                                       class="form-control bg-dark text-white border-secondary" 
+                                       id="date_of_birth" 
+                                       name="date_of_birth"
+                                       value="{{ subject.date_of_birth[:10] if subject and subject.date_of_birth else '' }}"
+                                       max="{{ today }}">
+                                <div class="form-text">Opcional - Ayuda a calcular la edad</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Información Física -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-success border-bottom border-success pb-2 mb-3">
+                                    <i class="bi bi-rulers me-2"></i>
+                                    Datos Físicos
+                                </h6>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="height" class="form-label">Altura (cm)</label>
+                                <div class="input-group">
+                                    <input type="number" 
+                                           class="form-control bg-dark text-white border-secondary" 
+                                           id="height" 
+                                           name="height"
+                                           value="{{ subject.height|int if subject and subject.height else '' }}"
+                                           placeholder="Ej: 170"
+                                           min="50" 
+                                           max="250"
+                                           step="1">
+                                    <span class="input-group-text bg-secondary border-secondary">cm</span>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Importante para cálculos biomecánicos (Drillis & Contini)
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="activity_level" class="form-label">Nivel de Actividad Física</label>
+                                <select class="form-select bg-dark text-white border-secondary" 
+                                        id="activity_level" 
+                                        name="activity_level">
+                                    <option value="">-- Seleccionar --</option>
+                                    <option value="sedentary" {{ 'selected' if subject and subject.activity_level == 'sedentary' else '' }}>
+                                        Sedentario (poco o ningún ejercicio)
+                                    </option>
+                                    <option value="light" {{ 'selected' if subject and subject.activity_level == 'light' else '' }}>
+                                        Ligero (ejercicio 1-3 días/semana)
+                                    </option>
+                                    <option value="moderate" {{ 'selected' if subject and subject.activity_level == 'moderate' else '' }}>
+                                        Moderado (ejercicio 3-5 días/semana)
+                                    </option>
+                                    <option value="active" {{ 'selected' if subject and subject.activity_level == 'active' else '' }}>
+                                        Activo (ejercicio 6-7 días/semana)
+                                    </option>
+                                    <option value="very_active" {{ 'selected' if subject and subject.activity_level == 'very_active' else '' }}>
+                                        Muy Activo (atleta/trabajo físico intenso)
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Notas Adicionales -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-warning border-bottom border-warning pb-2 mb-3">
+                                    <i class="bi bi-journal-text me-2"></i>
+                                    Información Adicional
+                                </h6>
+                            </div>
+                            
+                            <div class="col-12 mb-3">
+                                <label for="notes" class="form-label">Notas / Observaciones</label>
+                                <textarea class="form-control bg-dark text-white border-secondary" 
+                                          id="notes" 
+                                          name="notes"
+                                          rows="3"
+                                          placeholder="Ej: Lesión previa en rodilla izquierda. Participante de práctica de biomecánica.">{{ subject.notes if subject and subject.notes else '' }}</textarea>
+                                <div class="form-text">
+                                    Incluye información relevante para el análisis: lesiones previas, condiciones especiales, contexto de la evaluación, etc.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botones de Acción -->
+                        <div class="row">
+                            <div class="col-12">
+                                <hr class="border-secondary">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <a href="{{ url_for('main.subjects') }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-arrow-left me-2"></i>
+                                        Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-{{ 'check-lg' if is_edit else 'plus-circle' }} me-2"></i>
+                                        {{ 'Guardar Cambios' if is_edit else 'Registrar Sujeto' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Información de ayuda -->
+            <div class="card bg-dark border-info mt-4">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-lightbulb text-info me-3 fs-4"></i>
+                        <div>
+                            <h6 class="text-info mb-1">¿Qué es un Sujeto de Estudio?</h6>
+                            <p class="text-muted mb-0 small">
+                                Un sujeto de estudio es una persona (voluntario, compañero, participante) 
+                                cuyos movimientos serán analizados como parte de las prácticas de 
+                                análisis biomecánico. Los datos registrados ayudan a contextualizar 
+                                los resultados del análisis ROM.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Validación del formulario
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('subjectForm');
+        
+        form.addEventListener('submit', function(e) {
+            const firstName = document.getElementById('first_name').value.trim();
+            const lastName = document.getElementById('last_name').value.trim();
+            const height = document.getElementById('height').value;
+            
+            if (!firstName || !lastName) {
+                e.preventDefault();
+                alert('El nombre y apellido son obligatorios');
+                return;
+            }
+            
+            if (height && (height < 50 || height > 250)) {
+                e.preventDefault();
+                alert('La altura debe estar entre 50 y 250 cm');
+                return;
+            }
+        });
+        
+        // Establecer fecha máxima como hoy
+        const dateInput = document.getElementById('date_of_birth');
+        if (dateInput) {
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.setAttribute('max', today);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,4096 @@
+/**
+ * BIOTRACK Theme for Reveal.js
+ * Tema personalizado para defensa de proyecto de grado
+ * Universidad Privada del Valle - Ingeniería Biomédica
+ * Autora: Mariana Zenobia Camacho Orgaz
+ * Fecha: Diciembre 2025
+ */
+
+/* ============================================
+   IMPORTAR FUENTE LATO
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+
+/* ============================================
+   ESCALA TIPOGRÁFICA GLOBAL - FUENTE LATO
+   Mínimo: 30px | Escala coherente y correlativa
+   ============================================ */
+:root {
+    /* ESCALA TIPOGRÁFICA CORRELATIVA */
+    --font-size-base: 30px;      /* Mínimo absoluto */
+    --font-size-sm: 32px;        /* Texto pequeño */
+    --font-size-md: 36px;        /* Texto normal */
+    --font-size-lg: 42px;        /* Subtítulos */
+    --font-size-xl: 48px;        /* Títulos de sección */
+    --font-size-2xl: 56px;       /* Títulos grandes */
+    --font-size-3xl: 64px;       /* Títulos principales */
+    --font-size-4xl: 72px;       /* Números de sección (01, 02, etc) */
+}
+
+/* ============================================
+   VARIABLES DE DISEÑO - PALETA BIOTRACK
+   ============================================ */
+:root {
+    /* Colores principales - TEMA CLARO */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-card: #f1f3f4;
+    
+    /* Colores de acento - CONSISTENTE CON BIOTRACK */
+    --accent-primary: #00B4D8;      /* Cyan BioTrack (ajustado para fondo claro) */
+    --accent-secondary: #0891B2;    /* Cyan oscuro para contraste */
+    --accent-highlight: #6366F1;    /* Indigo/Púrpura moderno */
+    --accent-warning: #EF4444;      /* Rojo BioTrack */
+    --accent-success: #10B981;      /* Verde BioTrack exacto */
+    --accent-purple: #7C3AED;       /* Púrpura vibrante BioTrack */
+    
+    /* Colores de texto - TEMA CLARO */
+    --text-primary: #0F172A;        /* Dark BioTrack */
+    --text-secondary: #1E293B;      /* Dark-2 BioTrack */
+    --text-muted: #64748B;
+    
+    /* Universidad del Valle */
+    --univalle-burgundy: #8B1538;
+    --univalle-gray: #6c757d;
+    
+    /* Tipografía - TODO EN LATO */
+    --font-primary: 'Lato', 'Segoe UI', 'Roboto', sans-serif;
+    --font-mono: 'Lato', 'Fira Code', 'Consolas', monospace;
+    
+    /* Espaciado - Reducidos para que quepa todo */
+    --spacing-xs: 0.15rem;
+    --spacing-sm: 0.35rem;
+    --spacing-md: 0.7rem;
+    --spacing-lg: 1.2rem;
+    --spacing-xl: 2rem;
+}
+
+/* ============================================
+   CONFIGURACIÓN PARA REVEAL.JS - PANTALLA COMPLETA
+   ============================================ */
+
+/* Ocultar TODOS los controles de navegación */
+.reveal .controls {
+    display: none !important;
+}
+
+.reveal .slide-number {
+    display: none !important;
+}
+
+.reveal .progress {
+    display: none !important;
+}
+
+/* Alineación de texto y configuración básica */
+.reveal .slides {
+    text-align: left;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.reveal .slides > section,
+.reveal .slides > section > section {
+    padding: 15px 20px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100% !important;
+    /* Distribuir contenido para aprovechar espacio */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+}
+
+/* Asegurar que el contenido de las slides se alinee arriba */
+.reveal .slides section {
+    top: 0 !important;
+    padding-top: 10px !important;
+}
+
+/* ============================================
+   TIPOGRAFÍA GLOBAL - LATO EN TODO
+   ============================================ */
+
+/* Aplicar Lato a TODO */
+.reveal,
+.reveal * {
+    font-family: 'Lato', sans-serif !important;
+}
+
+/* Tamaños base para toda la presentación - 30px mínimo */
+.reveal {
+    font-size: 32px !important;
+}
+
+/* Para que los valores en em den al menos 30px, base debe ser ~35px */
+.reveal .slides {
+    font-size: 35px !important;
+}
+
+/* Contenedores de contenido */
+.reveal .slides section {
+    font-size: 32px !important;
+}
+
+.reveal p,
+.reveal li {
+    font-size: 32px !important;
+    font-family: 'Lato', sans-serif !important;
+    line-height: 1.4 !important;
+}
+
+/* Spans y divs dentro de contenido mantienen herencia pero mínimo 30px */
+.reveal span,
+.reveal div {
+    font-family: 'Lato', sans-serif !important;
+}
+
+.reveal td,
+.reveal th,
+.reveal label {
+    font-size: 30px !important;
+    font-family: 'Lato', sans-serif !important;
+}
+
+/* Títulos principales H1 */
+.reveal h1 {
+    font-size: var(--font-size-3xl) !important;
+    font-family: 'Lato', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* Títulos H2 */
+.reveal h2 {
+    font-size: var(--font-size-2xl) !important;
+    font-family: 'Lato', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* Títulos H3 */
+.reveal h3 {
+    font-size: var(--font-size-xl) !important;
+    font-family: 'Lato', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* Títulos H4 */
+.reveal h4 {
+    font-size: var(--font-size-lg) !important;
+    font-family: 'Lato', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* Texto pequeño pero nunca menor a 30px */
+.reveal small,
+.reveal .small {
+    font-size: var(--font-size-base) !important;
+}
+
+/* Números de sección grandes (01, 02, etc) */
+.reveal .card-number,
+.reveal .section-number {
+    font-size: var(--font-size-4xl) !important;
+    font-weight: 900 !important;
+    font-family: 'Lato', sans-serif !important;
+}
+
+/* ============================================
+   FORZAR MÍNIMO 30px EN TODOS LOS TEXTOS
+   Sobrescribe estilos inline con em pequeños
+   ============================================ */
+
+/* Todos los párrafos dentro de reveal - FORZADO */
+.reveal section p,
+.reveal section div p,
+.reveal section span,
+.reveal section div span {
+    min-height: auto;
+}
+
+/* Aplicar tamaño mínimo usando min() - elementos con font-size inline */
+.reveal [style*="font-size"] {
+    font-family: 'Lato', sans-serif !important;
+}
+
+/* Tarjetas del árbol de problemas y otras secciones */
+.reveal section p[style*="0.7em"],
+.reveal section p[style*="0.8em"],
+.reveal section p[style*="0.85em"],
+.reveal section p[style*="0.9em"],
+.reveal section span[style*="0.7em"],
+.reveal section span[style*="0.8em"],
+.reveal section span[style*="0.85em"],
+.reveal section span[style*="0.9em"] {
+    font-size: 24px !important;
+}
+
+/* Tarjetas con texto pequeño - forzar a tamaño legible */
+.reveal section div[style*="grid"] p {
+    font-size: 24px !important;
+    line-height: 1.35 !important;
+}
+
+/* Badges y etiquetas */
+.reveal section span[style*="border-radius: 20px"],
+.reveal section span[style*="border-radius: 25px"] {
+    font-size: 26px !important;
+    padding: 8px 20px !important;
+}
+
+/* Texto de leyendas */
+.reveal section div[style*="position: fixed"] span {
+    font-size: 22px !important;
+}
+
+/* Iconos/emojis - mantener tamaño visual */
+.reveal section div[style*="border-radius: 50%"][style*="font-size"] {
+    font-size: 1.5em !important;
+}
+
+/* ============================================
+   EFECTOS DE FONDO BIOMECÁNICO
+   ============================================ */
+
+/* Skeleton como marca de agua central */
+.skeleton-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Partículas flotantes de fondo */
+.particles-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.particles-bg::before,
+.particles-bg::after {
+    content: '●';
+    position: absolute;
+    font-size: 12px;
+    color: #00a2e8;
+    animation: particleFloat 18s linear infinite;
+    opacity: 0.4;
+    text-shadow: 0 0 6px rgba(0, 162, 232, 0.3);
+}
+
+.particles-bg::before {
+    left: 20%;
+    animation-delay: 0s;
+}
+
+.particles-bg::before {
+    left: 20%;
+    animation-delay: 0s;
+}
+
+.particles-bg::after {
+    left: 80%;
+    animation-delay: 9s;
+    color: #ff7d00;
+    opacity: 0.3;
+    text-shadow: 0 0 4px rgba(255, 125, 0, 0.2);
+}
+
+/* Más bolitas con diferentes posiciones */
+.floating-particles {
+    position: relative;
+}
+
+.floating-particles .particle-1,
+.floating-particles .particle-2,
+.floating-particles .particle-3,
+.floating-particles .particle-4 {
+    position: absolute;
+    font-size: 16px;
+    opacity: 0.8;
+    animation: floatUp 12s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.floating-particles .particle-1 {
+    content: '●';
+    color: #0088cc;
+    left: 25%;
+    animation-delay: 0s;
+    text-shadow: 0 0 10px rgba(0, 136, 204, 0.6);
+}
+
+.floating-particles .particle-2 {
+    content: '●';
+    color: #e65a00;
+    left: 70%;
+    animation-delay: 4s;
+    text-shadow: 0 0 8px rgba(230, 90, 0, 0.5);
+}
+
+.floating-particles .particle-3 {
+    content: '●';
+    color: #1a7a1a;
+    left: 50%;
+    animation-delay: 8s;
+    text-shadow: 0 0 6px rgba(26, 122, 26, 0.4);
+}
+
+.floating-particles .particle-4 {
+    content: '●';
+    color: #0088cc;
+    left: 10%;
+    animation-delay: 2s;
+    font-size: 12px;
+    text-shadow: 0 0 5px rgba(0, 136, 204, 0.3);
+}
+
+/* ============================================
+   ESTILOS BASE - TEMA CLARO para auditorio con luz
+   ============================================ */
+.reveal-viewport {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.reveal {
+    font-family: var(--font-primary);
+    font-size: 28px;  /* Tamaño óptimo para proyector */
+    font-weight: normal;
+    color: var(--text-primary);
+}
+
+/* ============================================
+   ENCABEZADOS - Tamaños para buena visibilidad
+   ============================================ */
+.reveal h1 {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: #00a2e8;
+    text-transform: none;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--spacing-md);
+    text-shadow: 2px 2px 6px rgba(0, 162, 232, 0.3);
+}
+
+.reveal h2 {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: #ff7d00;
+    text-transform: none;
+    margin-bottom: var(--spacing-sm);
+    border-bottom: 2px solid #ff7d00;
+    padding-bottom: var(--spacing-xs);
+    display: inline-block;
+    text-shadow: 1px 1px 3px rgba(255, 125, 0, 0.2);
+}
+
+.reveal h3 {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #228b22;
+    text-transform: none;
+    margin-bottom: var(--spacing-xs);
+    text-shadow: 1px 1px 2px rgba(34, 139, 34, 0.15);
+}
+
+.reveal h4 {
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* ============================================
+   TEXTO Y PÁRRAFOS
+   ============================================ */
+.reveal p {
+    margin: var(--spacing-md) 0;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.reveal strong {
+    color: #00a2e8;
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(0, 162, 232, 0.2);
+}
+
+.reveal em {
+    color: #ff7d00;
+    font-style: italic;
+    text-shadow: 1px 1px 2px rgba(255, 125, 0, 0.15);
+}
+
+/* ============================================
+   LISTAS
+   ============================================ */
+.reveal ul,
+.reveal ol {
+    display: block;
+    text-align: left;
+    margin-left: var(--spacing-lg);
+}
+
+.reveal li {
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.reveal li::marker {
+    color: #00a2e8;
+}
+
+.reveal ul li::before {
+    content: none;
+}
+
+/* Lista con iconos personalizados */
+.reveal .icon-list {
+    list-style: none;
+    margin-left: 0;
+}
+
+.reveal .icon-list li {
+    padding-left: var(--spacing-lg);
+    position: relative;
+}
+
+.reveal .icon-list li::before {
+    content: "▸";
+    color: #00a2e8;
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+    text-shadow: 0 0 4px #00a2e8;
+}
+
+/* ============================================
+   BLOQUES ESPECIALES
+   ============================================ */
+
+/* Tarjeta destacada */
+.reveal .highlight-box {
+    background: linear-gradient(135deg, rgba(0, 162, 232, 0.12) 0%, rgba(255, 125, 0, 0.08) 100%);
+    border-left: 4px solid #00a2e8;
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: var(--spacing-md) 0;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 0 2px 8px rgba(0, 162, 232, 0.1);
+}
+
+/* Caja de objetivo */
+.reveal .objective-box {
+    background: rgba(139, 21, 56, 0.2);
+    border: 2px solid var(--univalle-burgundy);
+    padding: var(--spacing-lg);
+    border-radius: 12px;
+    text-align: center;
+}
+
+/* Caja de estadística */
+.reveal .stat-box {
+    background: var(--bg-card);
+    padding: var(--spacing-md);
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid rgba(0, 162, 232, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.reveal .stat-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 162, 232, 0.25);
+}
+
+.reveal .stat-number {
+    font-size: 2em;
+    font-weight: 700;
+    color: #00a2e8;
+    display: block;
+    line-height: 1;
+    text-shadow: 1px 1px 3px rgba(0, 162, 232, 0.2);
+}
+
+.reveal .stat-label {
+    font-size: 0.75em;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+}
+
+/* Grid de estadísticas */
+.reveal .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+}
+
+/* ============================================
+   TABLAS
+   ============================================ */
+.reveal table {
+    margin: var(--spacing-lg) auto;
+    border-collapse: collapse;
+    font-size: 0.8em;
+}
+
+.reveal table th {
+    background: #00a2e8;
+    color: #ffffff;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-weight: 600;
+    text-align: left;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.reveal table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid rgba(0, 162, 232, 0.2);
+    color: var(--text-secondary);
+}
+
+.reveal table tr:hover td {
+    background: rgba(0, 162, 232, 0.08);
+}
+
+/* ============================================
+   CÓDIGO
+   ============================================ */
+.reveal pre {
+    background: #0d0d1a;
+    border-radius: 8px;
+    padding: var(--spacing-md);
+    border: 1px solid rgba(22, 160, 133, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.reveal code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--accent-secondary);
+}
+
+.reveal pre code {
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* ============================================
+   IMÁGENES Y MEDIA
+   ============================================ */
+.reveal img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.reveal .image-caption {
+    font-size: 0.7em;
+    color: var(--text-muted);
+    margin-top: var(--spacing-sm);
+    font-style: italic;
+}
+
+/* Placeholder de imagen */
+.reveal .image-placeholder {
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(22, 160, 133, 0.1) 100%);
+    border: 2px dashed var(--accent-primary);
+    border-radius: 12px;
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: var(--text-muted);
+}
+
+.reveal .image-placeholder-icon {
+    font-size: 4em;
+    margin-bottom: var(--spacing-md);
+    opacity: 0.5;
+}
+
+.reveal .image-placeholder-text {
+    font-size: 0.9em;
+    text-align: center;
+}
+
+/* Video placeholder */
+.reveal .video-placeholder {
+    background: linear-gradient(135deg, #1a1a3a 0%, #2a2a4a 100%);
+    border: 2px solid var(--accent-highlight);
+    border-radius: 12px;
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.reveal .video-placeholder::before {
+    content: "▶";
+    font-size: 5em;
+    color: var(--accent-highlight);
+    opacity: 0.7;
+}
+
+/* ============================================
+   DIAGRAMA DE BLOQUES
+   ============================================ */
+.reveal .diagram-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin: var(--spacing-lg) 0;
+}
+
+.reveal .diagram-row {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.reveal .diagram-block {
+    background: var(--bg-card);
+    border: 2px solid var(--accent-primary);
+    border-radius: 8px;
+    padding: var(--spacing-md) var(--spacing-lg);
+    text-align: center;
+    min-width: 150px;
+    transition: all 0.3s ease;
+}
+
+.reveal .diagram-block:hover {
+    background: rgba(22, 160, 133, 0.2);
+    transform: scale(1.05);
+}
+
+.reveal .diagram-block.hardware {
+    border-color: var(--accent-highlight);
+}
+
+.reveal .diagram-block.software {
+    border-color: var(--accent-secondary);
+}
+
+.reveal .diagram-block.data {
+    border-color: var(--accent-purple);
+}
+
+.reveal .diagram-arrow {
+    font-size: 2em;
+    color: var(--accent-primary);
+}
+
+/* ============================================
+   PORTADA Y SECCIONES ESPECIALES
+   ============================================ */
+
+/* ============================================
+   PORTADA ESTILO POWERPOINT - CENTRADA Y LIMPIA
+   ============================================ */
+.reveal .title-slide {
+    position: relative;
+    text-align: center;
+    display: flex !important;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+}
+
+/* Elementos de fondo restaurados */
+.reveal .title-slide .floating-particles,
+.reveal .title-slide .skeleton-watermark {
+    position: absolute !important;
+    z-index: 0;
+}
+
+.reveal .title-slide .floating-particles {
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+/* Marca de agua del logo BIOTRACK restaurada */
+.reveal .title-slide::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 500px;
+    background-image: url('../images/biotrack-watermark.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* CONTENIDO PRINCIPAL */
+.reveal .title-slide .title-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+/* Logo Universidad - más arriba y visible con efectos */
+.reveal .title-slide .logo-section {
+    margin-bottom: 10px;
+    margin-top: -10px;
+}
+
+.reveal .title-slide .university-logo {
+    height: 85px;
+    width: auto;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 4px 8px rgba(22, 160, 133, 0.2));
+    transition: transform 0.3s ease;
+}
+
+.reveal .title-slide .university-logo:hover {
+    transform: scale(1.05);
+}
+
+/* Sección central con el contenido principal */
+.reveal .title-slide .main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0;
+}
+
+/* Tipo de proyecto - más arriba */
+.reveal .title-slide .project-type {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-bottom: 25px;
+    margin-top: -10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    line-height: 1.4;
+    max-width: 85%;
+}
+
+/* Título principal - con efectos sutiles para tema claro */
+.reveal .title-slide .main-title {
+    font-size: 2.2em !important;
+    margin: 0 0 30px 0 !important;
+    line-height: 1.3;
+    border: none !important;
+    font-weight: 700;
+    color: var(--text-primary);
+    max-width: 95%;
+    text-shadow: 1px 1px 2px rgba(44, 62, 80, 0.1);
+    filter: drop-shadow(0 0 8px rgba(22, 160, 133, 0.15));
+}
+
+/* BIOTRACK con efectos mejorados para tema claro */
+.reveal .title-slide .biotrack {
+    font-size: 2.8em;
+    color: var(--accent-primary);
+    font-weight: 700;
+    letter-spacing: 12px;
+    display: block;
+    margin: 25px 0 35px 0;
+    position: relative;
+    text-shadow: 2px 2px 4px rgba(22, 160, 133, 0.3);
+    filter: drop-shadow(0 0 10px rgba(22, 160, 133, 0.4));
+}
+
+/* Línea decorativa bajo BIOTRACK - más visible */
+.reveal .title-slide .biotrack::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85%;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, var(--accent-primary), var(--accent-secondary), var(--accent-primary), transparent);
+    opacity: 0.9;
+    border-radius: 2px;
+    box-shadow: 0 2px 4px rgba(22, 160, 133, 0.3);
+}
+
+/* Información de personas - aprovechando más espacio */
+.reveal .title-slide .people-info {
+    margin: 30px 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+}
+
+.reveal .title-slide .person-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.reveal .title-slide .label {
+    font-size: 0.85em;
+    color: var(--accent-primary);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-shadow: 1px 1px 2px rgba(22, 160, 133, 0.2);
+    filter: drop-shadow(0 0 4px rgba(22, 160, 133, 0.3));
+}
+
+.reveal .title-slide .name {
+    font-size: 1em;
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+/* Información del pie */
+.reveal .title-slide .footer-info {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 2px solid var(--accent-primary);
+    position: relative;
+    opacity: 0.9;
+}
+
+.reveal .title-slide .footer-info::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 6px;
+    background: linear-gradient(90deg, transparent, var(--accent-primary), var(--accent-secondary), var(--accent-primary), transparent);
+    border-radius: 3px;
+    box-shadow: 0 2px 6px rgba(22, 160, 133, 0.4);
+    filter: drop-shadow(0 0 8px rgba(22, 160, 133, 0.3));
+}
+
+.reveal .title-slide .footer-info p {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin: 0;
+    font-weight: 500;
+}
+
+/* ============================================
+   ROADMAP DE CONTENIDO - DISEÑO CREATIVO
+   ============================================ */
+.content-roadmap {
+    padding: 15px 20px !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #ffffff 100%);
+}
+
+.roadmap-title {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.roadmap-title h1 {
+    font-size: 72px !important;
+    font-weight: 700;
+    color: #16a085;
+    margin-bottom: 10px;
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 8px rgba(22, 160, 133, 0.4);
+    animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+.subtitle-roadmap {
+    font-size: 32px !important;
+    color: #666;
+    font-weight: 400;
+    letter-spacing: 1px;
+}
+
+.roadmap-container {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.roadmap-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: nowrap;
+}
+
+.roadmap-card {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 15px 10px;
+    box-shadow: 0 8px 25px rgba(22, 160, 133, 0.15);
+    border: 2px solid rgba(22, 160, 133, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* Icono SVG */
+.card-icon {
+    margin-bottom: 5px;
+    color: #16a085;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.card-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.roadmap-card:hover .card-icon {
+    color: #1abc9c;
+    transform: scale(1.2) rotate(5deg);
+    opacity: 1;
+}
+
+.roadmap-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #00a2e8, #ff7d00, #228b22);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.roadmap-card:hover::before {
+    opacity: 1;
+}
+
+.roadmap-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0, 162, 232, 0.25);
+    border-color: #00a2e8;
+}
+
+.card-number {
+    font-size: 2.5em;
+    font-weight: 800;
+    color: #16a085;
+    margin-bottom: 5px;
+    line-height: 1;
+    text-shadow: 0 0 12px rgba(22, 160, 133, 0.5);
+    transition: all 0.3s ease;
+}
+
+.card-content h3 {
+    font-size: 22px !important;
+    font-weight: 700;
+    color: #333;
+    margin: 3px 0;
+    line-height: 1.15;
+    letter-spacing: 0.3px;
+}
+
+.card-content p {
+    font-size: 18px !important;
+    color: #666;
+    margin: 5px 0 0 0;
+    line-height: 1.2;
+    font-style: italic;
+}
+
+/* Colores BIOTRACK alternos */
+.roadmap-card:nth-child(2n) .card-number,
+.roadmap-card:nth-child(2n) .card-icon {
+    color: #1abc9c;
+    text-shadow: 0 0 12px rgba(26, 188, 156, 0.5);
+}
+
+.roadmap-card:nth-child(3n) .card-number,
+.roadmap-card:nth-child(3n) .card-icon {
+    color: #2980b9;
+    text-shadow: 0 0 12px rgba(41, 128, 185, 0.5);
+}
+
+.roadmap-card:nth-child(2n):hover {
+    border-color: #1abc9c;
+    box-shadow: 0 12px 30px rgba(26, 188, 156, 0.3);
+}
+
+.roadmap-card:nth-child(3n):hover {
+    border-color: #2980b9;
+    box-shadow: 0 12px 30px rgba(41, 128, 185, 0.3);
+}
+
+/* Tarjeta especial para la demostración */
+.demo-card {
+    background: linear-gradient(135deg, rgba(22, 160, 133, 0.12) 0%, rgba(26, 188, 156, 0.08) 100%);
+    border: 2px solid #16a085;
+}
+
+.demo-card .card-number,
+.demo-card .card-icon {
+    background: linear-gradient(135deg, #16a085, #1abc9c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.demo-card:hover {
+    background: linear-gradient(135deg, rgba(22, 160, 133, 0.18) 0%, rgba(26, 188, 156, 0.12) 100%);
+    transform: translateY(-8px) scale(1.03);
+}
+
+/* Efecto especial para demo card cuando aparece */
+.demo-card.fragment.visible {
+    animation: demoCardSpecial 2s ease-out;
+}
+
+@keyframes demoCardSpecial {
+    0% {
+        transform: translateY(40px) scale(0.8) rotate(-5deg);
+        opacity: 0;
+        box-shadow: 0 0 0 rgba(22, 160, 133, 0);
+    }
+    30% {
+        transform: translateY(-10px) scale(1.15) rotate(2deg);
+        opacity: 1;
+        box-shadow: 0 25px 60px rgba(22, 160, 133, 0.6), 0 0 30px rgba(26, 188, 156, 0.4);
+    }
+    60% {
+        transform: translateY(5px) scale(0.95) rotate(-1deg);
+    }
+    100% {
+        transform: translateY(0) scale(1) rotate(0deg);
+        opacity: 1;
+        box-shadow: 0 12px 35px rgba(22, 160, 133, 0.3), 0 0 20px rgba(22, 160, 133, 0.2);
+    }
+}
+
+/* Efecto highlight al aparecer cada tarjeta */
+.highlight-on-show.fragment.visible {
+    animation: cardAppearHighlight 1.5s ease-out;
+}
+
+@keyframes cardAppearHighlight {
+    0% {
+        transform: translateY(40px) scale(0.8);
+        opacity: 0;
+        box-shadow: 0 0 0 rgba(22, 160, 133, 0);
+    }
+    50% {
+        transform: translateY(-5px) scale(1.1);
+        opacity: 1;
+        box-shadow: 0 20px 50px rgba(22, 160, 133, 0.5);
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+        box-shadow: 0 8px 25px rgba(22, 160, 133, 0.15);
+    }
+}
+
+@keyframes titleGlow {
+    from {
+        text-shadow: 2px 2px 8px rgba(22, 160, 133, 0.4);
+    }
+    to {
+        text-shadow: 2px 2px 15px rgba(22, 160, 133, 0.7), 0 0 20px rgba(22, 160, 133, 0.3);
+    }
+}
+
+/* Animación de entrada mejorada */
+.roadmap-card.fragment {
+    opacity: 0;
+    transform: translateY(50px) scale(0.8);
+    transition: none;
+}
+
+.roadmap-card.fragment.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animaciones automáticas para las tarjetas */
+.auto-appear-card {
+    opacity: 0;
+    transform: translateY(50px) scale(0.8);
+    transition: none;
+}
+
+.auto-appear-card.appeared {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation: cardAutoAppear 1.5s ease-out;
+}
+
+.auto-appear-card.appeared .card-icon {
+    animation: iconBounce 0.6s ease-out 0.3s;
+}
+
+.auto-appear-card.appeared .card-number {
+    animation: numberGlow 0.8s ease-out 0.5s;
+}
+
+@keyframes cardAutoAppear {
+    0% {
+        transform: translateY(50px) scale(0.8);
+        opacity: 0;
+        box-shadow: 0 0 0 rgba(22, 160, 133, 0);
+    }
+    50% {
+        transform: translateY(-5px) scale(1.1);
+        opacity: 1;
+        box-shadow: 0 20px 50px rgba(22, 160, 133, 0.5);
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+        box-shadow: 0 8px 25px rgba(22, 160, 133, 0.15);
+    }
+}
+
+@keyframes iconBounce {
+    0% { 
+        transform: scale(1); 
+        color: #16a085;
+    }
+    50% { 
+        transform: scale(1.3) rotate(10deg); 
+        color: #1abc9c;
+    }
+    100% { 
+        transform: scale(1); 
+        color: #16a085;
+    }
+}
+
+@keyframes numberGlow {
+    0% { 
+        text-shadow: 0 0 12px rgba(22, 160, 133, 0.5);
+        transform: scale(1);
+    }
+    50% { 
+        text-shadow: 0 0 25px rgba(22, 160, 133, 1), 0 0 35px rgba(22, 160, 133, 0.7);
+        transform: scale(1.1);
+    }
+    100% { 
+        text-shadow: 0 0 12px rgba(22, 160, 133, 0.5);
+        transform: scale(1);
+    }
+}
+
+/* ============================================
+   INTRODUCCIÓN ACADÉMICA PROFESIONAL
+   ============================================ */
+
+/* === PORTADA DE INTRODUCCIÓN === */
+.intro-section-cover {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.intro-cover-content {
+    text-align: center;
+    position: relative;
+    z-index: 10;
+}
+
+.section-number-large {
+    font-size: 2.5em;
+    color: #16a085;
+    font-weight: 300;
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeInUp 1s ease-out 0.5s forwards;
+}
+
+.intro-main-title {
+    font-size: 4em !important;
+    color: #2c3e50 !important;
+    font-weight: 700 !important;
+    margin-bottom: 30px !important;
+    border: none !important;
+    opacity: 0;
+    animation: fadeInUp 1s ease-out 1s forwards;
+}
+
+.title-underline {
+    width: 150px;
+    height: 4px;
+    background: linear-gradient(90deg, #16a085, #1abc9c);
+    margin: 0 auto 40px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: expandWidth 1s ease-out 1.5s forwards;
+}
+
+.intro-subtitle {
+    font-size: 1.4em;
+    color: #34495e;
+    font-weight: 400;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+    opacity: 0;
+    animation: fadeInUp 1s ease-out 2s forwards;
+}
+
+/* Elementos flotantes de fondo */
+.floating-elements {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.float-element {
+    position: absolute;
+    font-size: 2em;
+    opacity: 0.1;
+    animation: floatGentle 8s ease-in-out infinite;
+}
+
+.element-1 {
+    top: 15%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.element-2 {
+    top: 20%;
+    right: 15%;
+    animation-delay: 2s;
+}
+
+.element-3 {
+    bottom: 25%;
+    left: 20%;
+    animation-delay: 4s;
+}
+
+.element-4 {
+    bottom: 30%;
+    right: 25%;
+    animation-delay: 6s;
+}
+
+@keyframes floatGentle {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0.1;
+    }
+    50% {
+        transform: translateY(-20px) rotate(5deg);
+        opacity: 0.2;
+    }
+}
+
+/* === DIAPOSITIVA 1: CAMPO DE ESTUDIO === */
+.field-study-slide {
+    position: relative;
+    overflow: hidden;
+    padding: 15px 20px;
+}
+
+.parallax-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.parallax-element {
+    position: absolute;
+    background: rgba(22, 160, 133, 0.05);
+    border-radius: 50%;
+    animation: parallaxMove 15s ease-in-out infinite;
+}
+
+.p1 {
+    width: 100px;
+    height: 100px;
+    top: 10%;
+    left: 5%;
+    animation-delay: 0s;
+}
+
+.p2 {
+    width: 150px;
+    height: 150px;
+    top: 60%;
+    right: 10%;
+    animation-delay: 5s;
+}
+
+.p3 {
+    width: 80px;
+    height: 80px;
+    bottom: 15%;
+    left: 15%;
+    animation-delay: 10s;
+}
+
+@keyframes parallaxMove {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(20px, -15px) scale(1.1);
+    }
+    66% {
+        transform: translate(-10px, 10px) scale(0.9);
+    }
+}
+
+.field-content {
+    position: relative;
+    z-index: 10;
+}
+
+.field-title {
+    text-align: center;
+    color: #2c3e50 !important;
+    font-size: 2.8em !important;
+    font-weight: 700 !important;
+    margin-bottom: 60px !important;
+    border: none !important;
+}
+
+.title-icon {
+    font-size: 0.8em;
+    margin-right: 20px;
+    vertical-align: middle;
+}
+
+.zoom-effect {
+    opacity: 0;
+    transform: scale(0.5);
+    animation: zoomIn 1s ease-out 0.5s forwards;
+}
+
+@keyframes zoomIn {
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    margin-bottom: 50px;
+}
+
+.content-left {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.concept-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(22, 160, 133, 0.2);
+    border-radius: 15px;
+    padding: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 5px 15px rgba(22, 160, 133, 0.1);
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateX(-30px);
+}
+
+.concept-card:hover {
+    transform: translateX(0) translateY(-5px);
+    box-shadow: 0 10px 25px rgba(22, 160, 133, 0.2);
+}
+
+.appear-1 {
+    animation: slideInLeft 0.8s ease-out 1s forwards;
+}
+
+.appear-2 {
+    animation: slideInLeft 0.8s ease-out 1.5s forwards;
+}
+
+.appear-3 {
+    animation: fadeInScale 1s ease-out 2s forwards;
+}
+
+.appear-4 {
+    animation: fadeInUp 0.8s ease-out 2.5s forwards;
+}
+
+@keyframes slideInLeft {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInScale {
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Efectos adicionales para diapositiva de innovación */
+.slide-in-1 { animation: slideInLeft 0.6s ease-out 0.4s both; }
+.slide-in-2 { animation: slideInLeft 0.6s ease-out 0.7s both; }
+.slide-in-3 { animation: slideInLeft 0.6s ease-out 1s both; }
+.fade-in-up { animation: fadeInUp 0.8s ease-out 1.3s both; }
+.zoom-in { animation: zoomIn 0.6s ease-out 1.6s both; }
+.zoom-in-delay { animation: zoomIn 0.6s ease-out 1.9s both; }
+.appear-final { animation: fadeInScale 0.8s ease-out 2.2s both; }
+
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Efectos de zoom y rotación para elementos principales */
+.zoom-effect {
+    animation: zoomPulse 4s ease-in-out infinite;
+}
+
+.morph-effect {
+    animation: morphGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes morphGlow {
+    from {
+        text-shadow: 0 0 10px rgba(22,160,133,0.3);
+    }
+    to {
+        text-shadow: 0 0 20px rgba(22,160,133,0.6), 0 0 30px rgba(22,160,133,0.3);
+    }
+}
+
+@keyframes iconRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes iconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.professional-icon {
+    font-size: 2.5em;
+    color: #16a085;
+    min-width: 60px;
+}
+
+.card-content h3 {
+    color: #2c3e50;
+    font-size: 1.3em;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.card-content p {
+    color: #7f8c8d;
+    font-size: 1em;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Visualización ROM */
+.rom-visualization {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.human-silhouette {
+    position: relative;
+    width: 200px;
+    height: 300px;
+    background: linear-gradient(180deg, rgba(22, 160, 133, 0.1), rgba(26, 188, 156, 0.1));
+    border-radius: 100px 100px 20px 20px;
+    border: 3px solid rgba(22, 160, 133, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.joint-indicator {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #16a085;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 5px rgba(22, 160, 133, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.shoulder {
+    top: 15%;
+    right: 5%;
+}
+
+.elbow {
+    top: 40%;
+    right: -5%;
+}
+
+.hip {
+    top: 60%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.knee {
+    bottom: 25%;
+    left: 45%;
+}
+
+.rom-arc {
+    position: absolute;
+    border: 2px solid #1abc9c;
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: rotateArc 4s linear infinite;
+}
+
+.arc-1 {
+    width: 60px;
+    height: 60px;
+    top: 10%;
+    right: -15px;
+    border-left: transparent;
+    border-bottom: transparent;
+}
+
+.arc-2 {
+    width: 80px;
+    height: 80px;
+    top: 55%;
+    left: 10%;
+    border-right: transparent;
+    border-top: transparent;
+    animation-delay: 2s;
+}
+
+@keyframes rotateArc {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+.applications-banner {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.app-tag {
+    background: linear-gradient(135deg, #16a085, #1abc9c);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 500;
+    box-shadow: 0 3px 10px rgba(22, 160, 133, 0.3);
+    transform: translateY(10px);
+    opacity: 0;
+    animation: tagAppear 0.5s ease-out forwards;
+}
+
+.app-tag:nth-child(1) {
+    animation-delay: 2.5s;
+}
+
+.app-tag:nth-child(2) {
+    animation-delay: 2.7s;
+}
+
+.app-tag:nth-child(3) {
+    animation-delay: 2.9s;
+}
+
+.app-tag:nth-child(4) {
+    animation-delay: 3.1s;
+}
+
+@keyframes tagAppear {
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* === DIAPOSITIVA 2: INNOVACIÓN + CONTEXTO === */
+.innovation-context-slide {
+    position: relative;
+    overflow: hidden;
+    padding: 15px 20px;
+}
+
+.particle-network {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #16a085;
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: particleFloat 6s ease-in-out infinite;
+}
+
+.p1 {
+    top: 20%;
+    left: 15%;
+    animation-delay: 0s;
+}
+
+.p2 {
+    top: 25%;
+    right: 20%;
+    animation-delay: 2s;
+}
+
+.p3 {
+    bottom: 30%;
+    left: 25%;
+    animation-delay: 4s;
+}
+
+.p4 {
+    bottom: 35%;
+    right: 15%;
+    animation-delay: 6s;
+}
+
+.connection {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #16a085, transparent);
+    opacity: 0.3;
+    animation: connectionPulse 4s ease-in-out infinite;
+}
+
+.c1 {
+    top: 22%;
+    left: 16%;
+    width: 200px;
+    transform: rotate(15deg);
+    animation-delay: 1s;
+}
+
+.c2 {
+    top: 26%;
+    right: 25%;
+    width: 150px;
+    transform: rotate(-20deg);
+    animation-delay: 3s;
+}
+
+.c3 {
+    bottom: 32%;
+    left: 30%;
+    width: 180px;
+    transform: rotate(25deg);
+    animation-delay: 5s;
+}
+
+@keyframes particleFloat {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-15px) scale(1.2);
+    }
+}
+
+@keyframes connectionPulse {
+    0%, 100% {
+        opacity: 0.1;
+        transform: scaleX(0.5);
+    }
+    50% {
+        opacity: 0.4;
+        transform: scaleX(1);
+    }
+}
+
+.innovation-content {
+    position: relative;
+    z-index: 10;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.innovation-section {
+    margin-bottom: 80px;
+}
+
+.innovation-title {
+    text-align: center;
+    color: #2c3e50 !important;
+    font-size: 2.8em !important;
+    font-weight: 700 !important;
+    margin-bottom: 50px !important;
+    border: none !important;
+}
+
+.morph-effect {
+    opacity: 0;
+    transform: rotateX(-90deg);
+    animation: morphIn 1s ease-out 0.5s forwards;
+}
+
+@keyframes morphIn {
+    to {
+        opacity: 1;
+        transform: rotateX(0deg);
+    }
+}
+
+.innovation-features {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(22, 160, 133, 0.1);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(22, 160, 133, 0.1);
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateX(-50px);
+}
+
+.feature-item:hover {
+    transform: translateX(0) translateY(-3px);
+    box-shadow: 0 8px 25px rgba(22, 160, 133, 0.2);
+    border-color: rgba(22, 160, 133, 0.3);
+}
+
+.slide-in-1 {
+    animation: slideInLeft 0.8s ease-out 1.2s forwards;
+}
+
+.slide-in-2 {
+    animation: slideInLeft 0.8s ease-out 1.6s forwards;
+}
+
+.slide-in-3 {
+    animation: slideInLeft 0.8s ease-out 2s forwards;
+}
+
+.feature-icon {
+    font-size: 2.5em;
+    color: #16a085;
+    min-width: 60px;
+    text-align: center;
+}
+
+.feature-text h3 {
+    color: #2c3e50;
+    font-size: 1.3em;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.feature-text p {
+    color: #7f8c8d;
+    font-size: 1em;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* División visual */
+.section-divider {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #16a085, transparent);
+    margin: 60px auto;
+    width: 60%;
+    opacity: 0;
+    animation: expandWidth 1s ease-out 2.5s forwards;
+}
+
+/* Sección de contexto */
+.context-section {
+    text-align: center;
+}
+
+.context-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.8s ease-out 3s forwards;
+}
+
+.context-icon {
+    font-size: 2.5em;
+    color: #16a085;
+}
+
+.context-header h2 {
+    color: #2c3e50;
+    font-size: 2.2em;
+    font-weight: 600;
+    margin: 0;
+}
+
+.institution-info {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 50px;
+    flex-wrap: wrap;
+}
+
+.institution-card,
+.program-card {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(22, 160, 133, 0.2);
+    border-radius: 20px;
+    padding: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 280px;
+    box-shadow: 0 8px 20px rgba(22, 160, 133, 0.1);
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.institution-card:hover,
+.program-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 30px rgba(22, 160, 133, 0.2);
+}
+
+.zoom-in {
+    animation: zoomIn 0.8s ease-out 3.5s forwards;
+}
+
+.zoom-in-delay {
+    animation: zoomIn 0.8s ease-out 4s forwards;
+}
+
+.institution-logo,
+.program-icon {
+    font-size: 2.5em;
+    color: #16a085;
+}
+
+.institution-details h3,
+.program-details h3 {
+    color: #2c3e50;
+    font-size: 1.3em;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+}
+
+.institution-details p,
+.program-details p {
+    color: #7f8c8d;
+    font-size: 1em;
+    margin: 0;
+}
+
+/* Objetivo del proyecto */
+.project-objective {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    background: linear-gradient(135deg, rgba(22, 160, 133, 0.1), rgba(26, 188, 156, 0.1));
+    border: 2px solid rgba(22, 160, 133, 0.3);
+    border-radius: 20px;
+    padding: 30px;
+    margin: 40px auto 0;
+    max-width: 800px;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.appear-final {
+    animation: fadeInUp 1s ease-out 4.5s forwards;
+}
+
+.objective-arrow {
+    font-size: 2em;
+    color: #16a085;
+    font-weight: bold;
+}
+
+.objective-text h3 {
+    color: #2c3e50;
+    font-size: 1.4em;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    text-align: left;
+}
+
+.objective-emphasis {
+    color: #16a085;
+    font-size: 1.1em;
+    font-weight: 500;
+    margin: 0;
+    text-align: left;
+}
+
+/* Notas de presentación */
+.presentation-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    background: rgba(22, 160, 133, 0.1);
+    border: 2px solid rgba(22, 160, 133, 0.2);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 40px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.note-icon {
+    font-size: 1.8em;
+    color: #16a085;
+}
+
+.presentation-note p {
+    color: #2c3e50;
+    font-size: 1.1em;
+    margin: 0;
+    text-align: left;
+}
+
+.presentation-note strong {
+    color: #16a085;
+}
+
+/* Animaciones base */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes expandWidth {
+    from {
+        width: 0;
+        opacity: 0;
+    }
+    to {
+        width: 150px;
+        opacity: 1;
+    }
+}
+
+/* Responsive para pantallas más pequeñas */
+@media (max-width: 768px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+    
+    .innovation-features {
+        gap: 20px;
+    }
+    
+    .feature-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .institution-info {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .project-objective {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Efectos de fondo creativos */
+.intro-background-effects {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.floating-icon {
+    position: absolute;
+    animation: floatIcon 6s ease-in-out infinite;
+    opacity: 0;
+    animation-fill-mode: both;
+}
+
+.floating-icon:nth-child(1) {
+    top: 15%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.floating-icon:nth-child(2) {
+    top: 70%;
+    right: 15%;
+    animation-delay: 1s;
+}
+
+.floating-icon:nth-child(3) {
+    bottom: 20%;
+    left: 20%;
+    animation-delay: 2s;
+}
+
+@keyframes floatIcon {
+    0%, 100% {
+        opacity: 0;
+        transform: translateY(20px) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-10px) rotate(10deg);
+    }
+}
+
+/* Contenido principal */
+.intro-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.animate-number {
+    animation: numberPulse 3s ease-in-out infinite;
+}
+
+@keyframes numberPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.6;
+    }
+}
+
+/* Ícono central animado */
+.intro-main-icon {
+    margin: 20px 0;
+    animation: mainIconRotate 8s linear infinite;
+}
+
+@keyframes mainIconRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Título mejorado */
+.intro-title {
+    font-size: 3.5em !important;
+    font-weight: 700 !important;
+    color: white !important;
+    border: none !important;
+    margin: 20px 0 !important;
+    text-shadow: 0 0 20px rgba(255,255,255,0.5) !important;
+    letter-spacing: 3px;
+    animation: titleGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    from {
+        text-shadow: 0 0 20px rgba(255,255,255,0.5);
+    }
+    to {
+        text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 40px rgba(26,188,156,0.4);
+    }
+}
+
+/* Subtítulos creativos */
+.intro-subtitles {
+    margin: 30px 0;
+}
+
+.intro-subtitle {
+    color: rgba(255,255,255,0.9);
+    font-size: 1.2em;
+    margin: 10px 0;
+    font-weight: 300;
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+.fade-in-1 {
+    animation: fadeInSlide 0.8s ease-out 1s forwards;
+}
+
+.fade-in-2 {
+    animation: fadeInSlide 0.8s ease-out 2s forwards;
+}
+
+.fade-in-3 {
+    animation: fadeInSlide 0.8s ease-out 3s forwards;
+}
+
+@keyframes fadeInSlide {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Indicador de navegación creativo */
+.navigation-hint {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.pulse-arrow {
+    font-size: 2em;
+    color: white;
+    animation: arrowPulse 2s ease-in-out infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes arrowPulse {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateY(10px);
+        opacity: 1;
+    }
+}
+
+.navigation-hint p {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9em;
+    margin: 0;
+    animation: fadeIn 1s ease-out 4s forwards;
+    opacity: 0;
+}
+
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
+
+/* Líneas decorativas */
+.decorative-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.line {
+    position: absolute;
+    background: rgba(255,255,255,0.2);
+    animation: lineGrow 3s ease-out forwards;
+}
+
+.line-1 {
+    top: 20%;
+    left: 0;
+    height: 2px;
+    width: 0;
+    animation-delay: 1.5s;
+}
+
+.line-2 {
+    bottom: 30%;
+    right: 0;
+    height: 2px;
+    width: 0;
+    animation-delay: 2.5s;
+}
+
+.line-3 {
+    top: 50%;
+    left: 80%;
+    width: 2px;
+    height: 0;
+    animation-delay: 3.5s;
+    animation-name: lineGrowVertical;
+}
+
+@keyframes lineGrow {
+    to {
+        width: 30%;
+        height: 2px;
+    }
+}
+
+@keyframes lineGrowVertical {
+    to {
+        height: 20%;
+        width: 2px;
+    }
+}
+
+/* ============================================
+   DIAPOSITIVA DE CONTENIDO MEJORADA
+   ============================================ */
+.intro-content-slide {
+    position: relative;
+}
+
+.content-section-icon {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    opacity: 0.7;
+    animation: sectionIconFloat 4s ease-in-out infinite;
+}
+
+@keyframes sectionIconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.content-slide-title {
+    color: #16a085 !important;
+    border-bottom: 3px solid #16a085 !important;
+    padding-bottom: 10px !important;
+    display: inline-block !important;
+    margin-bottom: 40px !important;
+}
+
+/* Lista mejorada */
+.enhanced-list {
+    list-style: none;
+    margin-left: 0;
+}
+
+.enhanced-list .highlight-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(22, 160, 133, 0.05);
+    border-radius: 10px;
+    border-left: 4px solid #16a085;
+    transition: all 0.3s ease;
+}
+
+.enhanced-list .highlight-item:hover {
+    background: rgba(22, 160, 133, 0.1);
+    transform: translateX(10px);
+}
+
+.list-icon {
+    font-size: 1.5em;
+    margin-right: 15px;
+    min-width: 40px;
+}
+
+/* Showcase de tecnología */
+.tech-showcase {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.tech-icon-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.tech-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background: rgba(22, 160, 133, 0.1);
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(22, 160, 133, 0.2);
+}
+
+.tech-item:hover {
+    background: rgba(22, 160, 133, 0.2);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(22, 160, 133, 0.2);
+}
+
+.tech-icon {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.tech-item span {
+    color: #16a085;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.tech-description {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(22, 160, 133, 0.15), rgba(26, 188, 156, 0.1));
+    border-radius: 15px;
+    border: 2px solid rgba(22, 160, 133, 0.3);
+}
+
+.tech-description p:first-child {
+    font-size: 1.5em;
+    color: #16a085;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.tech-description p:last-child {
+    color: #666;
+    font-size: 1em;
+    margin: 0;
+}
+
+/* ============================================
+   ANIMACIONES PARA GIFs INTRODUCCIÓN
+   ============================================ */
+@keyframes zoomPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes morphPulse {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1);
+    }
+    33% {
+        transform: scale(1.03) rotate(1deg);
+        filter: brightness(1.1);
+    }
+    66% {
+        transform: scale(1.02) rotate(-1deg);
+        filter: brightness(1.05);
+    }
+}
+
+@keyframes iconRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes iconFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Responsive para pantallas más pequeñas */
+@media (max-width: 1400px) {
+    .roadmap-row {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .roadmap-card {
+        min-width: 180px;
+        max-width: 220px;
+    }
+}
+
+/* ============================================
+   SLIDE DE SECCIÓN INTRODUCCIÓN CREATIVA
+   ============================================ */
+.intro-section {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Efectos de fondo creativos */
+.intro-background-effects {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.floating-icon {
+    position: absolute;
+    animation: floatIcon 6s ease-in-out infinite;
+    opacity: 0;
+    animation-fill-mode: both;
+}
+
+.floating-icon:nth-child(1) {
+    top: 15%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.floating-icon:nth-child(2) {
+    top: 70%;
+    right: 15%;
+    animation-delay: 1s;
+}
+
+.floating-icon:nth-child(3) {
+    bottom: 20%;
+    left: 20%;
+    animation-delay: 2s;
+}
+
+@keyframes floatIcon {
+    0%, 100% {
+        opacity: 0;
+        transform: translateY(20px) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-10px) rotate(10deg);
+    }
+}
+
+/* Contenido principal */
+.intro-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.animate-number {
+    animation: numberPulse 3s ease-in-out infinite;
+}
+
+@keyframes numberPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.6;
+    }
+}
+
+/* Ícono central animado */
+.intro-main-icon {
+    margin: 20px 0;
+    animation: mainIconRotate 8s linear infinite;
+}
+
+@keyframes mainIconRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Título mejorado */
+.intro-title {
+    font-size: 3.5em !important;
+    font-weight: 700 !important;
+    color: white !important;
+    border: none !important;
+    margin: 20px 0 !important;
+    text-shadow: 0 0 20px rgba(255,255,255,0.5) !important;
+    letter-spacing: 3px;
+    animation: titleGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    from {
+        text-shadow: 0 0 20px rgba(255,255,255,0.5);
+    }
+    to {
+        text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 40px rgba(26,188,156,0.4);
+    }
+}
+
+/* Subtítulos creativos */
+.intro-subtitles {
+    margin: 30px 0;
+}
+
+.intro-subtitle {
+    color: rgba(255,255,255,0.9);
+    font-size: 1.2em;
+    margin: 10px 0;
+    font-weight: 300;
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+.fade-in-1 {
+    animation: fadeInSlide 0.8s ease-out 1s forwards;
+}
+
+.fade-in-2 {
+    animation: fadeInSlide 0.8s ease-out 2s forwards;
+}
+
+.fade-in-3 {
+    animation: fadeInSlide 0.8s ease-out 3s forwards;
+}
+
+@keyframes fadeInSlide {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Indicador de navegación creativo */
+.navigation-hint {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.pulse-arrow {
+    font-size: 2em;
+    color: white;
+    animation: arrowPulse 2s ease-in-out infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes arrowPulse {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateY(10px);
+        opacity: 1;
+    }
+}
+
+.navigation-hint p {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9em;
+    margin: 0;
+    animation: fadeIn 1s ease-out 4s forwards;
+    opacity: 0;
+}
+
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
+
+/* Líneas decorativas */
+.decorative-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.line {
+    position: absolute;
+    background: rgba(255,255,255,0.2);
+    animation: lineGrow 3s ease-out forwards;
+}
+
+.line-1 {
+    top: 20%;
+    left: 0;
+    height: 2px;
+    width: 0;
+    animation-delay: 1.5s;
+}
+
+.line-2 {
+    bottom: 30%;
+    right: 0;
+    height: 2px;
+    width: 0;
+    animation-delay: 2.5s;
+}
+
+.line-3 {
+    top: 50%;
+    left: 80%;
+    width: 2px;
+    height: 0;
+    animation-delay: 3.5s;
+}
+
+@keyframes lineGrow {
+    to {
+        width: 30%;
+        height: 2px;
+    }
+}
+
+.line-3 {
+    animation-name: lineGrowVertical;
+}
+
+@keyframes lineGrowVertical {
+    to {
+        height: 20%;
+        width: 2px;
+    }
+}
+
+/* ============================================
+   SLIDE DE SECCIÓN (Divisores originales)
+   ============================================ */
+.reveal .section-slide {
+    text-align: center;
+}
+
+.reveal .section-slide h2 {
+    font-size: 2.5em;
+    border: none;
+    padding: 0;
+    display: block;
+}
+
+.reveal .section-number {
+    font-size: 5em;
+    font-weight: 800;
+    color: var(--accent-primary);
+    opacity: 0.3;
+    line-height: 1;
+    margin-bottom: var(--spacing-md);
+}
+
+/* ============================================
+   TRANSICIONES Y ANIMACIONES
+   ============================================ */
+.reveal .slides section .fragment {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s ease;
+}
+
+.reveal .slides section .fragment.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.reveal .slides section .fragment.fade-up {
+    transform: translateY(30px);
+}
+
+.reveal .slides section .fragment.fade-up.visible {
+    transform: translateY(0);
+}
+
+.reveal .slides section .fragment.highlight-current-green.current-fragment {
+    color: var(--accent-success);
+}
+
+/* ============================================
+   CONTROLES Y NAVEGACIÓN
+   ============================================ */
+.reveal .controls {
+    color: var(--accent-primary);
+}
+
+.reveal .progress {
+    background: rgba(22, 160, 133, 0.2);
+    height: 4px;
+}
+
+.reveal .progress span {
+    background: var(--accent-primary);
+}
+
+.reveal .slide-number {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+/* ============================================
+   COLUMNAS (Layout de 2 columnas)
+   ============================================ */
+.reveal .columns {
+    display: flex;
+    gap: var(--spacing-lg);
+    align-items: flex-start;
+}
+
+.reveal .column {
+    flex: 1;
+}
+
+.reveal .column-60 {
+    flex: 0 0 60%;
+}
+
+.reveal .column-40 {
+    flex: 0 0 40%;
+}
+
+.reveal .column-50 {
+    flex: 0 0 48%;
+}
+
+/* ============================================
+   BADGES Y TAGS
+   ============================================ */
+.reveal .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.reveal .badge-primary {
+    background: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.reveal .badge-success {
+    background: var(--accent-success);
+    color: var(--text-primary);
+}
+
+.reveal .badge-warning {
+    background: #f39c12;
+    color: #1a1a1a;
+}
+
+.reveal .badge-danger {
+    background: var(--accent-warning);
+    color: var(--text-primary);
+}
+
+/* ============================================
+   ICONOS (usando emojis/caracteres)
+   ============================================ */
+.reveal .icon {
+    display: inline-block;
+    margin-right: var(--spacing-sm);
+}
+
+.reveal .icon-large {
+    font-size: 2em;
+    margin-bottom: var(--spacing-md);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media screen and (max-width: 768px) {
+    .reveal {
+        font-size: 24px;
+    }
+    
+    .reveal h1 {
+        font-size: 1.8em;
+    }
+    
+    .reveal h2 {
+        font-size: 1.4em;
+    }
+    
+    .reveal .columns {
+        flex-direction: column;
+    }
+    
+    .reveal .column-60,
+    .reveal .column-40,
+    .reveal .column-50 {
+        flex: 1;
+    }
+}
+
+/* ============================================
+   PRINT/PDF
+   ============================================ */
+@media print {
+    .reveal-viewport {
+        background: white !important;
+    }
+    
+    .reveal {
+        color: #333 !important;
+    }
+    
+    .reveal h1, .reveal h2, .reveal h3 {
+        color: var(--univalle-burgundy) !important;
+    }
+}
+
+/* ============================================
+   ANIMACIONES PERSONALIZADAS
+   ============================================ */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 5px var(--accent-primary);
+    }
+    50% {
+        box-shadow: 0 0 20px var(--accent-primary), 0 0 40px rgba(22, 160, 133, 0.3);
+    }
+}
+
+/* Animación de rotación suave para el skeleton */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Animación de líneas de conexión (como articulaciones) */
+@keyframes jointPulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.2);
+    }
+}
+
+/* Partículas de fondo biomecánico */
+/* Animación de bolitas flotantes */
+@keyframes floatUp {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8;
+    }
+    90% {
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateY(-10vh) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+/* Barrido suave de datos */
+@keyframes dataSweep {
+    0% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    20%, 80% {
+        opacity: 0.3;
+    }
+    100% {
+        transform: translateX(100vw);
+        opacity: 0;
+    }
+}
+
+
+
+/* Efecto de escaneo original */
+@keyframes scanLine {
+    0% {
+        top: 0%;
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+.reveal .pulse {
+    animation: pulse 2s infinite;
+}
+
+.reveal .glow {
+    animation: glow 2s infinite;
+}
+
+/* Animaciones de entrada para la portada */
+@keyframes slideInFromTop {
+    0% {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInFromBottom {
+    0% {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scaleIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ============================================
+   ANIMACIONES MEJORADAS PARA GIFs INTRODUCCIÓN  
+   ============================================ */
+
+/* Efectos de aparición con delay */
+.appear-1 { animation: appearProgressive 0.8s ease-out 0.5s both; }
+.appear-2 { animation: appearProgressive 0.8s ease-out 1s both; }
+.appear-3 { animation: appearProgressive 0.8s ease-out 1.5s both; }
+.appear-4 { animation: appearProgressive 0.8s ease-out 2s both; }
+
+.slide-in-1 { animation: slideInLeft 0.8s ease-out 0.8s both; }
+.slide-in-2 { animation: slideInLeft 0.8s ease-out 1.2s both; }
+.slide-in-3 { animation: slideInLeft 0.8s ease-out 1.6s both; }
+
+/* ============================================
+   SECCIÓN PLANTEAMIENTO DEL PROBLEMA
+   ============================================ */
+
+/* Animaciones para items con fade-in */
+.fade-in-item {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInItem 0.8s ease-out forwards;
+}
+
+.fade-in-item[data-delay="0.5s"] {
+    animation-delay: 0.5s;
+}
+
+.fade-in-item[data-delay="1s"] {
+    animation-delay: 1s;
+}
+
+.fade-in-item[data-delay="1.5s"] {
+    animation-delay: 1.5s;
+}
+
+.fade-in-item[data-delay="2s"] {
+    animation-delay: 2s;
+}
+
+@keyframes fadeInItem {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Spotlight overlay system para árbol del problema */
+.spotlight-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.spotlight-effects,
+.spotlight-center,
+.spotlight-causes {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    pointer-events: none;
+}
+
+/* Spotlight para EFECTOS (parte superior) */
+.spotlight-effects {
+    top: 0;
+    height: 35%;
+    animation: spotlightEffects 12s ease-in-out infinite;
+}
+
+@keyframes spotlightEffects {
+    0%, 4%, 100% {
+        opacity: 0;
+        background: rgba(0, 0, 0, 0);
+    }
+    0%, 4% {
+        opacity: 0;
+    }
+    8%, 96% {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0);
+    }
+}
+
+/* Spotlight para PROBLEMA CENTRAL (parte media) */
+.spotlight-center {
+    top: 35%;
+    height: 30%;
+    animation: spotlightCenter 12s ease-in-out infinite;
+}
+
+@keyframes spotlightCenter {
+    0%, 33.33%, 100% {
+        opacity: 0;
+        background: rgba(0, 0, 0, 0);
+    }
+    33.33% {
+        opacity: 0;
+    }
+    37.33%, 62.67% {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0);
+    }
+    66.67% {
+        opacity: 0;
+    }
+}
+
+/* Spotlight para CAUSAS (parte inferior) */
+.spotlight-causes {
+    top: 65%;
+    height: 35%;
+    animation: spotlightCauses 12s ease-in-out infinite;
+}
+
+@keyframes spotlightCauses {
+    0%, 66.67%, 100% {
+        opacity: 0;
+        background: rgba(0, 0, 0, 0);
+    }
+    66.67% {
+        opacity: 0;
+    }
+    70.67%, 96% {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0);
+    }
+}
+
+/* Indicadores pulsantes sincronizados con spotlight */
+.indicator-pulse-effects,
+.indicator-pulse-center,
+.indicator-pulse-causes {
+    animation-duration: 12s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+}
+
+.indicator-pulse-effects {
+    animation-name: indicatorPulseEffects;
+}
+
+.indicator-pulse-center {
+    animation-name: indicatorPulseCenter;
+}
+
+.indicator-pulse-causes {
+    animation-name: indicatorPulseCauses;
+}
+
+/* Pulso de indicador EFECTOS */
+@keyframes indicatorPulseEffects {
+    0%, 4% {
+        border-color: #e74c3c;
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8), 0 0 30px rgba(231, 76, 60, 0.5);
+        transform: scale(1.05);
+    }
+    8%, 100% {
+        border-color: rgba(231, 76, 60, 0.3);
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.1);
+        transform: scale(1);
+    }
+}
+
+/* Pulso de indicador CENTRO */
+@keyframes indicatorPulseCenter {
+    0%, 33.33% {
+        border-color: rgba(231, 76, 60, 0.3);
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.1);
+        transform: scale(1);
+    }
+    33.33%, 37.33% {
+        border-color: #e74c3c;
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8), 0 0 30px rgba(231, 76, 60, 0.5);
+        transform: scale(1.05);
+    }
+    41.33%, 100% {
+        border-color: rgba(231, 76, 60, 0.3);
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.1);
+        transform: scale(1);
+    }
+}
+
+/* Pulso de indicador CAUSAS */
+@keyframes indicatorPulseCauses {
+    0%, 66.67% {
+        border-color: rgba(231, 76, 60, 0.3);
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.1);
+        transform: scale(1);
+    }
+    66.67%, 70.67% {
+        border-color: #e74c3c;
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8), 0 0 30px rgba(231, 76, 60, 0.5);
+        transform: scale(1.05);
+    }
+    74.67%, 100% {
+        border-color: rgba(231, 76, 60, 0.3);
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.1);
+        transform: scale(1);
+    }
+}
+
+/* Animación de énfasis con pulso */
+.pulse-emphasis {
+    animation: pulseEmphasis 2s ease-in-out infinite;
+}
+
+@keyframes pulseEmphasis {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.2);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 12px 35px rgba(231, 76, 60, 0.4), 0 0 20px rgba(231, 76, 60, 0.3);
+    }
+}
+
+/* Animación de pulso para pregunta de investigación */
+.question-pulse {
+    animation: questionPulse 3s ease-in-out infinite;
+}
+
+@keyframes questionPulse {
+    0%, 100% {
+        border-color: rgba(231, 76, 60, 0.5);
+        box-shadow: 0 10px 30px rgba(231, 76, 60, 0.2);
+    }
+    50% {
+        border-color: #e74c3c;
+        box-shadow: 0 15px 40px rgba(231, 76, 60, 0.4), 0 0 25px rgba(231, 76, 60, 0.3);
+    }
+}
+
+/* Decoraciones flotantes */
+.float-decor {
+    animation: floatDecor 4s ease-in-out infinite;
+}
+
+@keyframes floatDecor {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0.6;
+    }
+    50% {
+        transform: translateY(-15px) rotate(5deg);
+        opacity: 0.8;
+    }
+}
+
+/* Fade in up con delays escalonados */
+.fade-in-up-1 {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUpStagger 0.8s ease-out 0.3s forwards;
+}
+
+.fade-in-up-2 {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUpStagger 0.8s ease-out 0.6s forwards;
+}
+
+.fade-in-up-3 {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUpStagger 0.8s ease-out 0.9s forwards;
+}
+
+@keyframes fadeInUpStagger {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animación de aparición progresiva */
+@keyframes appearProgressive {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.zoom-in { animation: zoomIn 0.8s ease-out 1s both; }
+.zoom-in-delay { animation: zoomIn 0.8s ease-out 1.4s both; }
+.fade-in-up { animation: appearProgressive 1s ease-out 0.8s both; }
+
+/* Animaciones para layout centrado */
+.reveal .title-slide .title-content {
+    animation: scaleIn 1s ease-out 0.3s both;
+}
+
+
+/* ============================================
+   ANIMACIONES MEJORADAS PARA GIFs INTRODUCCIÓN
+   ============================================ */
+
+/* Efecto zoom con pulsación suave */
+@keyframes zoomPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.95;
+    }
+    50% {
+        transform: scale(1.03);
+        opacity: 1;
+    }
+}
+
+/* Efecto morphing con rotación y brillo */
+@keyframes morphPulse {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 0.95;
+        filter: brightness(1);
+    }
+    33% {
+        transform: scale(1.02) rotate(1deg);
+        opacity: 1;
+        filter: brightness(1.05);
+    }
+    66% {
+        transform: scale(0.98) rotate(-1deg);
+        opacity: 1;
+        filter: brightness(1.02);
+    }
+}
+
+/* Aparición progresiva de elementos */
+@keyframes appearProgressive {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Slide in desde la izquierda */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Zoom in para cards */
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Partículas animadas para segunda diapositiva */
+.particle-network {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: rgba(22,160,133,0.4);
+    border-radius: 50%;
+    animation: particleFloat 6s ease-in-out infinite;
+}
+
+.particle.p1 { top: 20%; left: 15%; animation-delay: 0s; }
+.particle.p2 { top: 60%; right: 20%; animation-delay: 2s; }
+.particle.p3 { bottom: 30%; left: 25%; animation-delay: 4s; }
+.particle.p4 { top: 40%; right: 30%; animation-delay: 1s; }
+
+@keyframes particleFloat {
+    0%, 100% { 
+        transform: translateY(0) scale(1); 
+        opacity: 0.4; 
+    }
+    50% { 
+        transform: translateY(-20px) scale(1.2); 
+        opacity: 0.8; 
+    }
+}
+
+.connection {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(22,160,133,0.3), transparent);
+    animation: connectionGlow 4s ease-in-out infinite;
+}
+
+.connection.c1 { 
+    top: 25%; 
+    left: 20%; 
+    width: 60px; 
+    transform: rotate(45deg); 
+    animation-delay: 0.5s; 
+}
+
+.connection.c2 { 
+    bottom: 35%; 
+    right: 25%; 
+    width: 80px; 
+    transform: rotate(-30deg); 
+    animation-delay: 1.5s; 
+}
+
+.connection.c3 { 
+    top: 50%; 
+    left: 30%; 
+    width: 70px; 
+    transform: rotate(60deg); 
+    animation-delay: 3s; 
+}
+
+@keyframes connectionGlow {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EFECTOS CREATIVOS ADICIONALES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* === Efecto de brillo pulsante para elementos destacados === */
+@keyframes glowPulse {
+    0%, 100% { 
+        box-shadow: 0 0 5px rgba(22, 160, 133, 0.3),
+                    0 0 10px rgba(22, 160, 133, 0.2),
+                    0 0 20px rgba(22, 160, 133, 0.1);
+    }
+    50% { 
+        box-shadow: 0 0 10px rgba(22, 160, 133, 0.5),
+                    0 0 20px rgba(22, 160, 133, 0.4),
+                    0 0 40px rgba(22, 160, 133, 0.2);
+    }
+}
+
+.glow-effect {
+    animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* === Efecto de shimmer/brillo deslizante === */
+@keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+.shimmer-text {
+    background: linear-gradient(90deg, 
+        var(--primary) 0%, 
+        #1abc9c 25%,
+        #ffffff 50%, 
+        #1abc9c 75%,
+        var(--primary) 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+}
+
+/* === Efecto de typing/escritura === */
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: var(--primary); }
+}
+
+.typewriter {
+    overflow: hidden;
+    border-right: 3px solid var(--primary);
+    white-space: nowrap;
+    animation: 
+        typing 3s steps(40, end),
+        blink-caret 0.75s step-end infinite;
+}
+
+/* === Efecto de contador animado === */
+@keyframes countUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.counter-animate {
+    animation: countUp 0.6s ease-out forwards;
+}
+
+/* === Efecto de ondas circulares === */
+@keyframes ripple {
+    0% { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+.ripple-effect {
+    position: relative;
+}
+
+.ripple-effect::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: ripple 2s ease-out infinite;
+}
+
+/* === Efecto de partículas flotantes (mejorado) === */
+@keyframes float-particle {
+    0%, 100% { 
+        transform: translateY(0) rotate(0deg); 
+        opacity: 0.3;
+    }
+    25% { transform: translateY(-20px) rotate(90deg); }
+    50% { 
+        transform: translateY(-40px) rotate(180deg); 
+        opacity: 0.7;
+    }
+    75% { transform: translateY(-20px) rotate(270deg); }
+}
+
+/* === Efecto de morfismo de vidrio mejorado === */
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card-dark {
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+}
+
+/* === Efecto de progreso circular === */
+@keyframes progress-ring {
+    from { stroke-dashoffset: 100; }
+    to { stroke-dashoffset: 0; }
+}
+
+/* === Efecto de zoom al hacer hover === */
+.hover-zoom {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-zoom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* === Efecto 3D card tilt === */
+.card-3d {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.card-3d-content {
+    transform: rotateX(5deg) rotateY(-5deg);
+    transition: transform 0.3s ease;
+}
+
+.card-3d:hover .card-3d-content {
+    transform: rotateX(0) rotateY(0);
+}
+
+/* === Efecto de gradiente animado === */
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.animated-gradient {
+    background: linear-gradient(-45deg, #16a085, #1abc9c, #2ecc71, #3498db, #9b59b6);
+    background-size: 400% 400%;
+    animation: gradient-shift 8s ease infinite;
+}
+
+/* === Efecto de borde animado === */
+@keyframes border-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.animated-border {
+    position: relative;
+    overflow: hidden;
+}
+
+.animated-border::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+        transparent 0deg,
+        var(--primary) 90deg,
+        transparent 180deg
+    );
+    animation: border-rotate 3s linear infinite;
+    z-index: -1;
+}
+
+.animated-border::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: var(--bg-primary);
+    border-radius: inherit;
+    z-index: -1;
+}
+
+/* === Efecto de destello/flash === */
+@keyframes flash {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.5; }
+}
+
+.flash-effect {
+    animation: flash 2s ease-in-out infinite;
+}
+
+/* === Estilos mejorados para placeholders === */
+.placeholder-box {
+    background: linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #34495e 100%);
+    border-radius: 15px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.placeholder-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    animation: shimmer 3s infinite;
+}
+
+.placeholder-content {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.placeholder-content .icon {
+    font-size: 3.5em;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+}
+
+.placeholder-content .title {
+    font-weight: 700;
+    font-size: 1.1em;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.placeholder-content .subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85em;
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* === Efecto de número grande animado === */
+.big-number {
+    font-size: 3em;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--primary), #1abc9c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    position: relative;
+}
+
+.big-number::after {
+    content: attr(data-value);
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* === Efecto de spotlight/foco === */
+@keyframes spotlight {
+    0% { transform: translateX(-100%) rotate(45deg); }
+    100% { transform: translateX(200%) rotate(45deg); }
+}
+
+.spotlight-effect {
+    position: relative;
+    overflow: hidden;
+}
+
+.spotlight-effect::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 50%;
+    height: 200%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    animation: spotlight 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* === Mejora de contraste para textos en fondos oscuros === */
+.dark-bg-text {
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.dark-bg-text-secondary {
+    color: rgba(255, 255, 255, 0.85) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.dark-bg-text-muted {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* === Indicadores visuales animados === */
+@keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+}
+
+.pulse-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* === Efecto de línea con puntos (timeline) === */
+.timeline-dot {
+    position: relative;
+}
+
+.timeline-dot::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 0 4px rgba(22, 160, 133, 0.2);
+}
+
+/* === Animación Pulse para iconos === */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* === Efecto de rebote suave === */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-8px); }
+    75% { transform: translateY(4px); }
+}
+
+.bounce-effect {
+    animation: bounce 2s ease-in-out infinite;
+}
+
+/* === Estilos mejorados para section-slides === */
+.section-slide {
+    position: relative;
+    overflow: hidden;
+}
+
+.section-slide::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.section-slide .section-number {
+    animation: pulse 3s ease-in-out infinite;
+}
+
+/* === Decoraciones geométricas para portadas === */
+.section-slide::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    right: 5%;
+    width: 200px;
+    height: 200px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 50%;
+    animation: ripple 4s ease-out infinite;
+    pointer-events: none;
+}
+
+/* === Efecto de subrayado animado === */
+.animated-underline {
+    position: relative;
+    display: inline-block;
+}
+
+.animated-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background: var(--primary);
+    transition: width 0.5s ease;
+}
+
+.animated-underline:hover::after,
+.reveal .present .animated-underline::after {
+    width: 100%;
+}
+
+/* === Efecto de aparición con blur === */
+@keyframes blurIn {
+    from {
+        filter: blur(10px);
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        filter: blur(0);
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.blur-in {
+    animation: blurIn 0.8s ease-out forwards;
+}
+
+/* === Número grande con contador visual === */
+.stat-number {
+    font-size: 3em;
+    font-weight: 900;
+    line-height: 1;
+    position: relative;
+    display: inline-block;
+}
+
+.stat-number::before {
+    content: attr(data-value);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, 
+        rgba(255,255,255,0.3) 0%, 
+        transparent 50%, 
+        transparent 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* === Efecto de tarjeta con hover elevado === */
+.elevated-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.elevated-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* === Mejoras adicionales para contraste === */
+.dark-container p,
+.dark-container span,
+.dark-container li {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.dark-container h1,
+.dark-container h2,
+.dark-container h3,
+.dark-container h4 {
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* === Sombras mejoradas para texto en fondos oscuros === */
+.text-shadow-strong {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.text-shadow-glow {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3),
+                 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* === Barra de progreso animada === */
+@keyframes progressBar {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+.progress-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar::after {
+    content: '';
+    display: block;
+    height: 100%;
+    background: var(--primary);
+    animation: progressBar 2s ease-out forwards;
+}

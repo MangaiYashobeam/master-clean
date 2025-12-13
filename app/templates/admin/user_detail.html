@@ -7,8 +7,8 @@
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}" class="text-biomech-cyan">Admin</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}" class="text-biomech-cyan">Usuarios</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}" class="text-biomech-cyan">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.users') }}" class="text-biomech-cyan">Usuarios</a></li>
             <li class="breadcrumb-item active">{{ user.username }}</li>
         </ol>
     </nav>
@@ -51,14 +51,18 @@
                             </div>
                             <div class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ url_for('admin_edit_user', user_id=user.id) }}" class="btn btn-warning">
+                                    <a href="{{ url_for('pdf.download_user_history_report', target_user_id=user.id) }}" 
+                                       class="btn btn-outline-danger" title="Descargar historial en PDF">
+                                        <i class="bi bi-file-earmark-pdf"></i> PDF
+                                    </a>
+                                    <a href="{{ url_for('main.edit_user', user_id=user.id) }}" class="btn btn-warning">
                                         <i class="bi bi-pencil"></i> Editar
                                     </a>
                                     {% if user.id != session.user_id %}
-                                    <button type="button" class="btn btn-{{ 'secondary' if user.status == 'active' else 'success' }}" 
-                                            onclick="toggleUserStatus({{ user.id }}, '{{ user.username }}', '{{ user.status }}')">
-                                        <i class="bi bi-{{ 'pause' if user.status == 'active' else 'play' }}-circle"></i>
-                                        {{ 'Desactivar' if user.status == 'active' else 'Activar' }}
+                                    <button type="button" class="btn btn-{{ 'secondary' if user.is_active else 'success' }}" 
+                                            onclick="toggleUserStatus({{ user.id }}, '{{ user.username }}', {{ 'true' if user.is_active else 'false' }})">
+                                        <i class="bi bi-{{ 'pause' if user.is_active else 'play' }}-circle"></i>
+                                        {{ 'Desactivar' if user.is_active else 'Activar' }}
                                     </button>
                                     {% endif %}
                                 </div>
@@ -327,6 +331,7 @@
 </div>
 
 <!-- Modal Resetear Contraseña -->
+<!-- Modal para resetear contraseña - PENDIENTE DE IMPLEMENTACIÓN
 <div class="modal fade" id="resetPasswordModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content bg-dark border-0">
@@ -336,7 +341,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('admin_reset_password', user_id=user.id) }}">
+            <form method="POST" action="#">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Nueva contraseña para <strong>{{ user.username }}</strong>:</label>
@@ -359,6 +364,7 @@
         </div>
     </div>
 </div>
+-->
 
 <!-- Modal Cambiar Estado -->
 <div class="modal fade" id="statusModal" tabindex="-1">
@@ -508,8 +514,7 @@
 </style>
 
 <script>
-function toggleUserStatus(userId, username, currentStatus) {
-    const isActive = currentStatus === 'active';
+function toggleUserStatus(userId, username, isActive) {
     const action = isActive ? 'desactivar' : 'activar';
     const newStatus = isActive ? 'inactivo' : 'activo';
     
@@ -518,7 +523,7 @@ function toggleUserStatus(userId, username, currentStatus) {
          <small class="text-muted">El usuario quedará ${newStatus} en el sistema.</small>`;
     
     const form = document.getElementById('statusForm');
-    form.action = `/admin/users/${userId}/toggle-status`;
+    form.action = `{{ url_for('main.users') }}/${userId}/toggle-status`;
     
     const confirmBtn = document.getElementById('confirmBtn');
     confirmBtn.className = `btn btn-${isActive ? 'warning' : 'success'}`;

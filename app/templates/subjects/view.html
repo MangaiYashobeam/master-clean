@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject.full_name }} - BioTrack{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Header con Breadcrumb -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.subjects') }}" class="text-decoration-none">
+                            <i class="bi bi-people me-1"></i>Sujetos
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {{ subject.subject_code }}
+                    </li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h2 class="mb-1">
+                        {% if subject.gender == 'M' %}
+                            <i class="bi bi-gender-male text-info me-2"></i>
+                        {% elif subject.gender == 'F' %}
+                            <i class="bi bi-gender-female text-danger me-2"></i>
+                        {% else %}
+                            <i class="bi bi-person-circle text-secondary me-2"></i>
+                        {% endif %}
+                        {{ subject.full_name }}
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <span class="badge bg-primary me-2">{{ subject.subject_code }}</span>
+                        Sujeto de Estudio
+                    </p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('pdf.download_subject_report', subject_id=subject.id) }}" 
+                       class="btn btn-outline-danger" title="Descargar reporte PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                    </a>
+                    <a href="{{ url_for('main.subjects_edit', subject_id=subject.id) }}" 
+                       class="btn btn-warning">
+                        <i class="bi bi-pencil me-2"></i>Editar
+                    </a>
+                    <button type="button" class="btn btn-danger" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#deleteModal">
+                        <i class="bi bi-trash me-2"></i>Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información Principal -->
+        <div class="col-lg-4">
+            <!-- Tarjeta de Datos Personales -->
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-vcard text-info me-2"></i>
+                        Datos Personales
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush bg-transparent">
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between">
+                            <span class="text-muted">Código:</span>
+                            <span class="badge bg-primary">{{ subject.subject_code }}</span>
+                        </li>
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between">
+                            <span class="text-muted">Nombre:</span>
+                            <strong>{{ subject.first_name }}</strong>
+                        </li>
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between">
+                            <span class="text-muted">Apellido:</span>
+                            <strong>{{ subject.last_name }}</strong>
+                        </li>
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between">
+                            <span class="text-muted">Género:</span>
+                            <span>
+                                {% if subject.gender == 'M' %}
+                                    <i class="bi bi-gender-male text-info me-1"></i>Masculino
+                                {% elif subject.gender == 'F' %}
+                                    <i class="bi bi-gender-female text-danger me-1"></i>Femenino
+                                {% elif subject.gender == 'Other' %}
+                                    <i class="bi bi-gender-ambiguous me-1"></i>Otro
+                                {% else %}
+                                    <span class="text-muted">No especificado</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between">
+                            <span class="text-muted">Fecha Nac.:</span>
+                            <span>
+                                {% if subject.date_of_birth %}
+                                    {{ subject.date_of_birth[:10] }}
+                                {% else %}
+                                    <span class="text-muted">No registrada</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Datos Físicos -->
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0">
+                        <i class="bi bi-rulers text-success me-2"></i>
+                        Datos Físicos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush bg-transparent">
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Altura:</span>
+                            {% if subject.height %}
+                                <span class="fs-5">
+                                    <strong>{{ subject.height|int }}</strong> 
+                                    <small class="text-muted">cm</small>
+                                </span>
+                            {% else %}
+                                <span class="text-muted">No registrada</span>
+                            {% endif %}
+                        </li>
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Actividad:</span>
+                            {% if subject.activity_level %}
+                                <span class="badge 
+                                    {% if subject.activity_level == 'very_active' %}bg-success
+                                    {% elif subject.activity_level == 'active' %}bg-info
+                                    {% elif subject.activity_level == 'moderate' %}bg-warning text-dark
+                                    {% elif subject.activity_level == 'light' %}bg-secondary
+                                    {% else %}bg-dark{% endif %}">
+                                    {% if subject.activity_level == 'very_active' %}Muy Activo
+                                    {% elif subject.activity_level == 'active' %}Activo
+                                    {% elif subject.activity_level == 'moderate' %}Moderado
+                                    {% elif subject.activity_level == 'light' %}Ligero
+                                    {% elif subject.activity_level == 'sedentary' %}Sedentario
+                                    {% else %}{{ subject.activity_level }}{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">No especificado</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Metadatos -->
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history text-warning me-2"></i>
+                        Registro
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush bg-transparent">
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between">
+                            <span class="text-muted">Creado:</span>
+                            <span>
+                                {% if subject.created_at %}
+                                    {{ subject.created_at[:10] }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </span>
+                        </li>
+                        {% if is_admin and subject.creator_name %}
+                        <li class="list-group-item bg-transparent border-secondary d-flex justify-content-between">
+                            <span class="text-muted">Creado por:</span>
+                            <span class="text-info">
+                                <i class="bi bi-person-circle me-1"></i>
+                                {{ subject.creator_name }}
+                            </span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notas y Sesiones -->
+        <div class="col-lg-8">
+            <!-- Notas -->
+            {% if subject.notes %}
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0">
+                        <i class="bi bi-journal-text text-info me-2"></i>
+                        Notas / Observaciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0" style="white-space: pre-wrap;">{{ subject.notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Historial de Sesiones ROM -->
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-activity text-primary me-2"></i>
+                        Historial de Análisis ROM
+                    </h5>
+                    <a href="{{ url_for('main.segments', subject_id=subject.id) }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        Nuevo Análisis para {{ subject.first_name }}
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if sessions and sessions|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Segmento</th>
+                                    <th>Ejercicio</th>
+                                    <th>Lado</th>
+                                    <th>ROM</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in sessions %}
+                                <tr>
+                                    <td>
+                                        <small>{{ s.created_at[:10] if s.created_at else '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            {{ s.segment|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ s.exercise_type|replace('_', ' ')|title }}</td>
+                                    <td>
+                                        {% if s.side == 'left' %}
+                                            <span class="badge bg-info">Izq</span>
+                                        {% elif s.side == 'right' %}
+                                            <span class="badge bg-warning text-dark">Der</span>
+                                        {% elif s.side == 'bilateral' %}
+                                            <span class="badge bg-success">Bilateral</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if s.rom_value %}
+                                            <strong class="text-success">{{ s.rom_value|round(1) }}°</strong>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-secondary" disabled 
+                                                data-bs-toggle="tooltip" 
+                                                data-bs-placement="left"
+                                                title="Próximamente: Ver detalles, Exportar PDF, Eliminar">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clipboard-data display-4 text-muted mb-3"></i>
+                        <p class="text-muted mb-3">No hay sesiones de análisis registradas para este sujeto</p>
+                        <a href="{{ url_for('main.segments', subject_id=subject.id) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-play-circle me-2"></i>
+                            Iniciar Primer Análisis
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-danger">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title text-danger" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar al sujeto <strong>{{ subject.full_name }}</strong>?</p>
+                <div class="alert alert-warning py-2">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Advertencia:</strong> Esta acción eliminará también todas las sesiones de análisis ROM asociadas a este sujeto.
+                </div>
+            </div>
+            <div class="modal-footer border-danger">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form action="{{ url_for('main.subjects_delete', subject_id=subject.id) }}" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>
+                        Eliminar Sujeto
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Inicializar tooltips de Bootstrap
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

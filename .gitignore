@@ -1,3 +1,12 @@
+# =============================================
+# Archivos grandes (no subir a GitHub)
+# =============================================
+presentacion/ejemplo_presentacion_de_otro_proyecto.pptx
+presentacion/ejemplo_presentacion_de_otro_proyecto.pdf
+database/biomech_system.db
+*.pptx
+*.db
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

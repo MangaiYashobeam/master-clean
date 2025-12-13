@@ -94,7 +94,12 @@ class CameraManager:
                 if ret:
                     # Procesar frame...
         """
+        import time as time_mod
+        
         with self._camera_lock:
+            t_start = time_mod.time()
+            print(f"📹 TIMING acquire_camera: Iniciando para '{user_id}'")
+            
             # Verificar si ya está en uso
             if self._in_use:
                 error_msg = (
@@ -104,8 +109,15 @@ class CameraManager:
                 logger.warning(f"Intento de acceso concurrente por '{user_id}': {error_msg}")
                 raise RuntimeError(error_msg)
             
-            # Intentar abrir la cámara
-            self._camera = cv2.VideoCapture(camera_index)
+            t1 = time_mod.time()
+            print(f"   📹 Check in_use: {t1-t_start:.2f}s")
+            
+            # Intentar abrir la cámara con backend específico para Windows
+            print(f"   📹 Abriendo VideoCapture(index={camera_index})...")
+            self._camera = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)  # DirectShow es más rápido en Windows
+            
+            t2 = time_mod.time()
+            print(f"   📹 VideoCapture() completado: {t2-t1:.2f}s")
             
             if not self._camera.isOpened():
                 self._camera = None
@@ -113,14 +125,36 @@ class CameraManager:
                 logger.error(error_msg)
                 raise RuntimeError(error_msg)
             
+            t3 = time_mod.time()
+            print(f"   📹 isOpened check: {t3-t2:.2f}s")
+            
+            # Optimizaciones de rendimiento para cámara
+            self._camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Buffer mínimo = menos latencia
+            
             # Configurar resolución
             self._camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
             self._camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            self._camera.set(cv2.CAP_PROP_FPS, 30)  # Forzar 30fps
+            
+            t4 = time_mod.time()
+            print(f"   📹 Set resolution/fps: {t4-t3:.2f}s")
+            
+            # Leer un frame dummy para "despertar" la cámara
+            print(f"   📹 Leyendo frame dummy para inicializar...")
+            ret_dummy, _ = self._camera.read()
+            
+            t4b = time_mod.time()
+            print(f"   📹 Frame dummy leído: {t4b-t4:.2f}s (ret={ret_dummy})")
             
             # Verificar resolución real obtenida
             actual_width = int(self._camera.get(cv2.CAP_PROP_FRAME_WIDTH))
             actual_height = int(self._camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
             actual_fps = int(self._camera.get(cv2.CAP_PROP_FPS))
+            
+            t5 = time_mod.time()
+            print(f"   📹 Get actual props: {t5-t4b:.2f}s")
+            print(f"   📹 TOTAL acquire_camera: {t5-t_start:.2f}s")
+            print(f"   📹 Resolución: {actual_width}x{actual_height} @ {actual_fps}fps")
             
             # Marcar como en uso
             self._in_use = True

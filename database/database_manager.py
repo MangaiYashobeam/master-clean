@@ -19,10 +19,17 @@ Fecha: 2025-11-14
 
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Generator
 from contextlib import contextmanager
+
+# Zona horaria de Bolivia (UTC-4)
+BOLIVIA_TZ = timezone(timedelta(hours=-4))
+
+def get_bolivia_time():
+    """Retorna la hora actual en zona horaria de Bolivia (UTC-4)"""
+    return datetime.now(BOLIVIA_TZ).replace(tzinfo=None)
 
 from sqlalchemy import (
     create_engine, Column, Integer, String, Float, Boolean, 
@@ -175,6 +182,7 @@ class Subject(Base):
             'height': self.height,
             'activity_level': self.activity_level,
             'notes': self.notes,
+            'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
     
@@ -334,6 +342,70 @@ class SystemLog(Base):
         return f"<SystemLog(id={self.id}, action='{self.action}')>"
 
 
+class UserAnalysisHistory(Base):
+    """
+    Modelo de Historial de Análisis del Usuario
+    Tabla: user_analysis_history
+    
+    Para cuando el usuario se analiza a sí mismo (no a un sujeto externo)
+    """
+    __tablename__ = 'user_analysis_history'
+    
+    # Identificación
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    
+    # Configuración del Análisis
+    segment = Column(String(50), nullable=False)
+    exercise_type = Column(String(50), nullable=False)
+    camera_view = Column(String(20))
+    side = Column(String(20))
+    
+    # Resultados del Análisis
+    rom_value = Column(Float, nullable=False)
+    left_rom = Column(Float)
+    right_rom = Column(Float)
+    quality_score = Column(Float)
+    classification = Column(String(50))
+    
+    # Metadatos
+    duration = Column(Float)
+    samples_collected = Column(Integer)
+    plateau_detected = Column(Boolean, default=False)
+    
+    # Auditoría - Usa hora de Bolivia (UTC-4)
+    created_at = Column(DateTime, nullable=False, default=get_bolivia_time)
+    
+    # Relaciones
+    user = relationship('User', backref='analysis_history')
+    
+    def to_dict(self) -> dict:
+        """Convierte a diccionario"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'segment': self.segment,
+            'exercise_type': self.exercise_type,
+            'camera_view': self.camera_view,
+            'side': self.side,
+            'rom_value': round(self.rom_value, 1) if self.rom_value else 0,
+            'left_rom': round(self.left_rom, 1) if self.left_rom else None,
+            'right_rom': round(self.right_rom, 1) if self.right_rom else None,
+            'quality_score': round(self.quality_score, 1) if self.quality_score else None,
+            'classification': self.classification,
+            'duration': round(self.duration, 1) if self.duration else None,
+            'samples_collected': self.samples_collected,
+            'plateau_detected': self.plateau_detected,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            # Campos formateados para display
+            'date': self.created_at.strftime('%d/%m/%Y') if self.created_at else None,
+            'time': self.created_at.strftime('%H:%M') if self.created_at else None
+        }
+    
+    def __repr__(self):
+        return f"<UserAnalysisHistory(id={self.id}, segment='{self.segment}', rom={self.rom_value})>"
+
+
 # ============================================================================
 # DATABASE MANAGER CLASS
 # ============================================================================
@@ -438,7 +510,28 @@ class DatabaseManager:
     def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Obtiene un usuario por ID"""
         with self.get_session() as session:
-            return session.query(User).filter_by(id=user_id).first()
+            user = session.query(User).filter_by(id=user_id).first()
+            if user:
+                # Forzar carga de todos los atributos antes de cerrar sesión
+                session.expunge(user)
+                from sqlalchemy.orm import make_transient
+                make_transient(user)
+            return user
+    
+    def get_user_height(self, user_id: int) -> Optional[float]:
+        """
+        Obtiene la altura del usuario por ID.
+        Método optimizado que solo obtiene el campo height.
+        
+        Args:
+            user_id: ID del usuario
+            
+        Returns:
+            Altura en cm o None si no existe el usuario o no tiene altura
+        """
+        with self.get_session() as session:
+            result = session.query(User.height).filter_by(id=user_id).first()
+            return result[0] if result else None
     
     def get_user_by_username(self, username: str) -> Optional[User]:
         """Obtiene un usuario por username"""
@@ -507,6 +600,250 @@ class DatabaseManager:
     def get_students(self, active_only: bool = True) -> List[User]:
         """Obtiene todos los estudiantes"""
         return self.get_all_users(role='student', active_only=active_only)
+    
+    def get_users_paginated(
+        self, 
+        page: int = 1, 
+        per_page: int = 10, 
+        search: str = None,
+        role_filter: str = None,
+        status_filter: str = None
+    ) -> Dict[str, Any]:
+        """
+        Obtiene usuarios con paginación y filtros
+        
+        Args:
+            page: Número de página
+            per_page: Usuarios por página
+            search: Búsqueda por username, full_name, email
+            role_filter: Filtrar por rol ('admin', 'student', 'all')
+            status_filter: Filtrar por estado ('active', 'inactive', 'all')
+        
+        Returns:
+            Diccionario con items, page, pages, total, has_prev, has_next
+        """
+        with self.get_session() as session:
+            query = session.query(User)
+            
+            # Aplicar filtros
+            if search:
+                search_term = f'%{search}%'
+                query = query.filter(
+                    (User.username.ilike(search_term)) |
+                    (User.full_name.ilike(search_term)) |
+                    (User.email.ilike(search_term)) |
+                    (User.student_id.ilike(search_term))
+                )
+            
+            if role_filter and role_filter != 'all':
+                query = query.filter(User.role == role_filter)
+            
+            if status_filter == 'active':
+                query = query.filter(User.is_active == True)
+            elif status_filter == 'inactive':
+                query = query.filter(User.is_active == False)
+            
+            # Contar total
+            total = query.count()
+            
+            # Calcular páginas
+            pages = (total + per_page - 1) // per_page if total > 0 else 1
+            page = max(1, min(page, pages))
+            
+            # Obtener usuarios de la página actual
+            users = query.order_by(User.created_at.desc())\
+                        .offset((page - 1) * per_page)\
+                        .limit(per_page)\
+                        .all()
+            
+            # Convertir a diccionarios con estadísticas adicionales
+            users_with_stats = []
+            for user in users:
+                # Contar sujetos del usuario
+                subjects_count = session.query(func.count(Subject.id))\
+                    .filter(Subject.created_by == user.id).scalar() or 0
+                
+                # Contar análisis de sujetos (rom_session)
+                sessions_count = session.query(func.count(ROMSession.id))\
+                    .filter(ROMSession.user_id == user.id).scalar() or 0
+                
+                # Contar auto-análisis (user_analysis_history)
+                self_analyses = session.query(func.count(UserAnalysisHistory.id))\
+                    .filter(UserAnalysisHistory.user_id == user.id).scalar() or 0
+                
+                users_with_stats.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'full_name': user.full_name,
+                    'email': user.email,
+                    'student_id': user.student_id,
+                    'program': user.program,
+                    'role': user.role,
+                    'is_active': user.is_active,
+                    'last_login': user.last_login,
+                    'created_at': user.created_at,
+                    'birth_date': user.birth_date,
+                    'subjects_count': subjects_count,
+                    'sessions_count': sessions_count,
+                    'self_analyses_count': self_analyses,
+                    'total_analyses': sessions_count + self_analyses
+                })
+            
+            return {
+                'items': users_with_stats,
+                'page': page,
+                'pages': pages,
+                'total': total,
+                'per_page': per_page,
+                'has_prev': page > 1,
+                'has_next': page < pages,
+                'prev_num': page - 1 if page > 1 else None,
+                'next_num': page + 1 if page < pages else None
+            }
+    
+    def get_user_detail_for_admin(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene detalles completos de un usuario para vista admin
+        
+        Args:
+            user_id: ID del usuario
+        
+        Returns:
+            Diccionario con toda la info del usuario, sujetos, análisis, estadísticas
+        """
+        with self.get_session() as session:
+            user = session.query(User).filter_by(id=user_id).first()
+            
+            if not user:
+                return None
+            
+            # Obtener sujetos del usuario
+            subjects = session.query(Subject).filter_by(created_by=user_id).all()
+            subjects_list = [{
+                'id': s.id,
+                'subject_code': s.subject_code,
+                'full_name': f"{s.first_name} {s.last_name}",
+                'gender': s.gender,
+                'sessions_count': session.query(func.count(ROMSession.id)).filter_by(subject_id=s.id).scalar() or 0,
+                'created_at': s.created_at
+            } for s in subjects]
+            
+            # Obtener análisis de sujetos (últimos 20)
+            subject_analyses = session.query(ROMSession)\
+                .filter(ROMSession.user_id == user_id)\
+                .order_by(ROMSession.created_at.desc())\
+                .limit(20).all()
+            
+            subject_analyses_list = [{
+                'id': a.id,
+                'subject_name': f"{a.subject.first_name} {a.subject.last_name}" if a.subject else 'N/A',
+                'segment': a.segment,
+                'exercise': a.exercise_name,
+                'side': a.side,
+                'rom_value': a.rom_value,
+                'quality_score': a.quality_score,
+                'created_at': a.created_at
+            } for a in subject_analyses]
+            
+            # Obtener auto-análisis (últimos 20)
+            self_analyses = session.query(UserAnalysisHistory)\
+                .filter(UserAnalysisHistory.user_id == user_id)\
+                .order_by(UserAnalysisHistory.analysis_date.desc())\
+                .limit(20).all()
+            
+            self_analyses_list = [{
+                'id': a.id,
+                'segment': a.segment,
+                'exercise': a.exercise_name,
+                'side': a.side,
+                'rom_max': a.rom_max,
+                'quality': a.quality,
+                'analysis_date': a.analysis_date
+            } for a in self_analyses]
+            
+            # Estadísticas del usuario
+            total_subjects = len(subjects)
+            total_subject_analyses = session.query(func.count(ROMSession.id))\
+                .filter(ROMSession.user_id == user_id).scalar() or 0
+            total_self_analyses = session.query(func.count(UserAnalysisHistory.id))\
+                .filter(UserAnalysisHistory.user_id == user_id).scalar() or 0
+            
+            avg_quality = session.query(func.avg(ROMSession.quality_score))\
+                .filter(ROMSession.user_id == user_id).scalar()
+            
+            # Análisis por segmento
+            segment_stats = session.query(
+                UserAnalysisHistory.segment,
+                func.count(UserAnalysisHistory.id).label('count')
+            ).filter(UserAnalysisHistory.user_id == user_id)\
+             .group_by(UserAnalysisHistory.segment).all()
+            
+            segment_names = {
+                'shoulder': 'Hombro',
+                'elbow': 'Codo',
+                'hip': 'Cadera',
+                'knee': 'Rodilla',
+                'ankle': 'Tobillo'
+            }
+            
+            segment_breakdown = [{
+                'key': s.segment,
+                'name': segment_names.get(s.segment, s.segment),
+                'count': s.count
+            } for s in segment_stats]
+            
+            return {
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'full_name': user.full_name,
+                    'email': user.email,
+                    'student_id': user.student_id,
+                    'program': user.program,
+                    'role': user.role,
+                    'is_active': user.is_active,
+                    'last_login': user.last_login,
+                    'created_at': user.created_at,
+                    'birth_date': user.birth_date
+                },
+                'subjects': subjects_list,
+                'subject_analyses': subject_analyses_list,
+                'self_analyses': self_analyses_list,
+                'stats': {
+                    'total_subjects': total_subjects,
+                    'total_subject_analyses': total_subject_analyses,
+                    'total_self_analyses': total_self_analyses,
+                    'total_analyses': total_subject_analyses + total_self_analyses,
+                    'avg_quality': round(avg_quality, 2) if avg_quality else 0,
+                    'segment_breakdown': segment_breakdown
+                }
+            }
+    
+    def toggle_user_status(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Cambia el estado activo/inactivo de un usuario
+        
+        Args:
+            user_id: ID del usuario
+        
+        Returns:
+            Diccionario con nuevo estado o None si no existe
+        """
+        with self.get_session() as session:
+            user = session.query(User).filter_by(id=user_id).first()
+            
+            if not user:
+                return None
+            
+            user.is_active = not user.is_active
+            session.commit()
+            
+            return {
+                'id': user.id,
+                'username': user.username,
+                'is_active': user.is_active,
+                'status': 'active' if user.is_active else 'inactive'
+            }
     
     def update_user(self, user_id: int, **kwargs) -> Optional[User]:
         """Actualiza un usuario"""
@@ -579,15 +916,160 @@ class DatabaseManager:
         with self.get_session() as session:
             return session.query(Subject).filter_by(subject_code=subject_code).first()
     
-    def get_subjects_by_user(self, user_id: int) -> List[Subject]:
-        """Obtiene todos los sujetos creados por un usuario"""
+    def get_subjects_by_user(self, user_id: int) -> List[dict]:
+        """
+        Obtiene todos los sujetos creados por un usuario
+        
+        Args:
+            user_id: ID del usuario creador
+            
+        Returns:
+            Lista de diccionarios con datos de los sujetos
+        """
         with self.get_session() as session:
-            return session.query(Subject).filter_by(created_by=user_id).all()
+            subjects = session.query(Subject).filter_by(created_by=user_id).order_by(Subject.created_at.desc()).all()
+            return [s.to_dict() for s in subjects]
     
-    def get_all_subjects(self) -> List[Subject]:
-        """Obtiene todos los sujetos"""
+    def get_all_subjects(self) -> List[dict]:
+        """
+        Obtiene todos los sujetos (para admin)
+        
+        Returns:
+            Lista de diccionarios con datos de los sujetos
+        """
         with self.get_session() as session:
-            return session.query(Subject).all()
+            subjects = session.query(Subject).order_by(Subject.created_at.desc()).all()
+            return [s.to_dict() for s in subjects]
+    
+    def get_all_subjects_with_creator(self) -> List[dict]:
+        """
+        Obtiene todos los sujetos con información del creador (para admin)
+        
+        Returns:
+            Lista de diccionarios con datos de los sujetos y su creador
+        """
+        with self.get_session() as session:
+            subjects = session.query(Subject).order_by(Subject.created_at.desc()).all()
+            result = []
+            for s in subjects:
+                subject_dict = s.to_dict()
+                # Agregar info del creador
+                if s.creator:
+                    subject_dict['creator_name'] = s.creator.full_name
+                    subject_dict['creator_username'] = s.creator.username
+                else:
+                    subject_dict['creator_name'] = 'Desconocido'
+                    subject_dict['creator_username'] = None
+                result.append(subject_dict)
+            return result
+    
+    def get_subject_by_id_safe(self, subject_id: int) -> Optional[dict]:
+        """
+        Obtiene un sujeto por ID (retorna diccionario)
+        
+        Args:
+            subject_id: ID del sujeto
+            
+        Returns:
+            Diccionario con datos del sujeto o None
+        """
+        with self.get_session() as session:
+            subject = session.query(Subject).filter_by(id=subject_id).first()
+            if subject:
+                subject_dict = subject.to_dict()
+                subject_dict['created_by'] = subject.created_by
+                if subject.creator:
+                    subject_dict['creator_name'] = subject.creator.full_name
+                return subject_dict
+            return None
+    
+    def generate_subject_code(self) -> str:
+        """
+        Genera un código único para un nuevo sujeto
+        Formato: SUJ-YYYY-NNNN
+        
+        Returns:
+            Código único para el sujeto
+        """
+        import datetime
+        year = datetime.datetime.now().year
+        
+        with self.get_session() as session:
+            # Buscar el último código del año actual
+            last_subject = session.query(Subject).filter(
+                Subject.subject_code.like(f'SUJ-{year}-%')
+            ).order_by(Subject.subject_code.desc()).first()
+            
+            if last_subject:
+                # Extraer el número y sumar 1
+                try:
+                    last_num = int(last_subject.subject_code.split('-')[-1])
+                    new_num = last_num + 1
+                except:
+                    new_num = 1
+            else:
+                new_num = 1
+            
+            return f"SUJ-{year}-{new_num:04d}"
+    
+    def can_user_access_subject(self, user_id: int, subject_id: int, user_role: str) -> bool:
+        """
+        Verifica si un usuario puede acceder a un sujeto
+        
+        Args:
+            user_id: ID del usuario
+            subject_id: ID del sujeto
+            user_role: Rol del usuario ('admin' o 'student')
+            
+        Returns:
+            True si tiene acceso, False si no
+        """
+        if user_role == 'admin':
+            return True
+        
+        with self.get_session() as session:
+            subject = session.query(Subject).filter_by(id=subject_id).first()
+            if subject:
+                return subject.created_by == user_id
+            return False
+    
+    def can_user_modify_subject(self, user_id: int, subject_id: int, user_role: str) -> bool:
+        """
+        Verifica si un usuario puede modificar/eliminar un sujeto
+        Admin puede modificar todos, estudiantes solo los suyos
+        
+        Args:
+            user_id: ID del usuario
+            subject_id: ID del sujeto
+            user_role: Rol del usuario
+            
+        Returns:
+            True si puede modificar, False si no
+        """
+        return self.can_user_access_subject(user_id, subject_id, user_role)
+    
+    def get_subjects_count_by_user(self, user_id: int) -> int:
+        """
+        Cuenta los sujetos creados por un usuario
+        
+        Args:
+            user_id: ID del usuario
+            
+        Returns:
+            Número de sujetos
+        """
+        with self.get_session() as session:
+            return session.query(Subject).filter_by(created_by=user_id).count()
+    
+    def get_total_subjects_count(self) -> int:
+        """
+        Cuenta el total de sujetos en el sistema
+        
+        Returns:
+            Número total de sujetos
+        """
+        with self.get_session() as session:
+            return session.query(Subject).count()
     
     def update_subject(self, subject_id: int, **kwargs) -> Optional[Subject]:
         """Actualiza un sujeto"""
@@ -622,7 +1104,7 @@ class DatabaseManager:
     # ========================================================================
     
     def create_rom_session(self, subject_id: int, user_id: int, segment: str,
-                          exercise_type: str, **kwargs) -> ROMSession:
+                          exercise_type: str, **kwargs) -> dict:
         """
         Crea una nueva sesión de análisis ROM
         
@@ -634,7 +1116,7 @@ class DatabaseManager:
             **kwargs: Campos opcionales (camera_view, side, max_angle, etc.)
         
         Returns:
-            Sesión ROM creada
+            Diccionario con datos de la sesión ROM creada
         """
         with self.get_session() as session:
             rom_session = ROMSession(
@@ -649,22 +1131,41 @@ class DatabaseManager:
             session.commit()
             session.refresh(rom_session)
             
-            return rom_session
+            # Retornar diccionario para evitar "detached instance" error
+            return rom_session.to_dict()
     
     def get_rom_session_by_id(self, session_id: int) -> Optional[ROMSession]:
         """Obtiene una sesión ROM por ID"""
         with self.get_session() as session:
             return session.query(ROMSession).filter_by(id=session_id).first()
     
-    def get_sessions_by_user(self, user_id: int) -> List[ROMSession]:
-        """Obtiene todas las sesiones de un usuario"""
+    def get_sessions_by_user(self, user_id: int) -> List[dict]:
+        """
+        Obtiene todas las sesiones de un usuario
+        
+        Args:
+            user_id: ID del usuario
+            
+        Returns:
+            Lista de diccionarios con datos de las sesiones
+        """
         with self.get_session() as session:
-            return session.query(ROMSession).filter_by(user_id=user_id).order_by(ROMSession.created_at.desc()).all()
+            sessions = session.query(ROMSession).filter_by(user_id=user_id).order_by(ROMSession.created_at.desc()).all()
+            return [s.to_dict() for s in sessions]
     
-    def get_sessions_by_subject(self, subject_id: int) -> List[ROMSession]:
-        """Obtiene todas las sesiones de un sujeto"""
+    def get_sessions_by_subject(self, subject_id: int) -> List[dict]:
+        """
+        Obtiene todas las sesiones de un sujeto
+        
+        Args:
+            subject_id: ID del sujeto
+            
+        Returns:
+            Lista de diccionarios con datos de las sesiones
+        """
         with self.get_session() as session:
-            return session.query(ROMSession).filter_by(subject_id=subject_id).order_by(ROMSession.created_at.desc()).all()
+            sessions = session.query(ROMSession).filter_by(subject_id=subject_id).order_by(ROMSession.created_at.desc()).all()
+            return [s.to_dict() for s in sessions]
     
     def get_sessions_by_segment(self, segment: str) -> List[ROMSession]:
         """Obtiene sesiones por segmento corporal"""
@@ -859,6 +1360,579 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error de conexión: {e}")
             return False
+    
+    # ========================================================================
+    # MÉTODOS CRUD - USER ANALYSIS HISTORY
+    # ========================================================================
+    
+    def save_analysis_to_history(
+        self,
+        user_id: int,
+        data: Dict[str, Any]
+    ) -> UserAnalysisHistory:
+        """
+        Guarda un análisis del usuario en el historial.
+        
+        Args:
+            user_id: ID del usuario
+            data: Diccionario con los datos del análisis
+                - segment: Segmento corporal
+                - exercise_type: Tipo de ejercicio
+                - rom_value: Valor ROM principal
+                - camera_view: Vista de cámara (profile/frontal)
+                - side: Lado (left/right/bilateral)
+                - left_rom: ROM lado izquierdo (para bilateral)
+                - right_rom: ROM lado derecho (para bilateral)
+                - quality_score: Calidad de medición (0-100)
+                - classification: Clasificación del resultado
+                - duration: Duración del análisis
+                - notes: Notas opcionales
+        
+        Returns:
+            Registro creado o diccionario con el ID
+        """
+        with self.get_session() as session:
+            analysis = UserAnalysisHistory(
+                user_id=user_id,
+                segment=data.get('segment', ''),
+                exercise_type=data.get('exercise_type', ''),
+                rom_value=data.get('rom_value', 0),
+                camera_view=data.get('camera_view'),
+                side=data.get('side'),
+                left_rom=data.get('left_rom'),
+                right_rom=data.get('right_rom'),
+                quality_score=data.get('quality_score'),
+                classification=data.get('classification'),
+                duration=data.get('duration')
+            )
+            
+            session.add(analysis)
+            session.commit()
+            
+            # Obtener el ID antes de cerrar la sesión
+            analysis_id = analysis.id
+            
+            # Retornar diccionario en lugar del objeto (evita error de sesión)
+            return {'id': analysis_id, 'success': True}
+    
+    def save_user_analysis(
+        self,
+        user_id: int,
+        segment: str,
+        exercise_type: str,
+        rom_value: float,
+        camera_view: str = None,
+        side: str = None,
+        left_rom: float = None,
+        right_rom: float = None,
+        quality_score: float = None,
+        classification: str = None,
+        duration: float = None,
+        samples_collected: int = None,
+        plateau_detected: bool = False
+    ) -> UserAnalysisHistory:
+        """
+        Guarda un análisis del usuario en el historial.
+        
+        Args:
+            user_id: ID del usuario
+            segment: Segmento corporal
+            exercise_type: Tipo de ejercicio
+            rom_value: Valor ROM principal
+            camera_view: Vista de cámara (profile/frontal)
+            side: Lado (left/right/bilateral)
+            left_rom: ROM lado izquierdo (para bilateral)
+            right_rom: ROM lado derecho (para bilateral)
+            quality_score: Calidad de medición (0-100)
+            classification: Clasificación del resultado
+            duration: Duración del análisis
+            samples_collected: Muestras recolectadas
+            plateau_detected: Si se detectó meseta
+        
+        Returns:
+            Registro creado
+        """
+        with self.get_session() as session:
+            analysis = UserAnalysisHistory(
+                user_id=user_id,
+                segment=segment,
+                exercise_type=exercise_type,
+                rom_value=rom_value,
+                camera_view=camera_view,
+                side=side,
+                left_rom=left_rom,
+                right_rom=right_rom,
+                quality_score=quality_score,
+                classification=classification,
+                duration=duration,
+                samples_collected=samples_collected,
+                plateau_detected=plateau_detected
+            )
+            
+            session.add(analysis)
+            session.commit()
+            session.refresh(analysis)
+            
+            return analysis
+    
+    def get_user_analysis_history(
+        self,
+        user_id: int,
+        segment: str = None,
+        exercise_type: str = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtiene el historial de análisis de un usuario.
+        
+        Args:
+            user_id: ID del usuario
+            segment: Filtrar por segmento (opcional)
+            exercise_type: Filtrar por ejercicio (opcional)
+            limit: Máximo de registros a retornar
+        
+        Returns:
+            Lista de análisis como diccionarios
+        """
+        with self.get_session() as session:
+            query = session.query(UserAnalysisHistory).filter_by(user_id=user_id)
+            
+            if segment:
+                query = query.filter_by(segment=segment)
+            
+            if exercise_type:
+                query = query.filter_by(exercise_type=exercise_type)
+            
+            records = query.order_by(UserAnalysisHistory.created_at.desc()).limit(limit).all()
+            
+            return [record.to_dict() for record in records]
+    
+    def get_user_analysis_history_filtered(
+        self,
+        user_id: int,
+        segment: str = None,
+        exercise_type: str = None,
+        date_from: str = None,
+        date_to: str = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtiene el historial de análisis de un usuario con filtros avanzados.
+        
+        Args:
+            user_id: ID del usuario
+            segment: Filtrar por segmento (opcional)
+            exercise_type: Filtrar por ejercicio (opcional)
+            date_from: Fecha desde (formato YYYY-MM-DD) (opcional)
+            date_to: Fecha hasta (formato YYYY-MM-DD) (opcional)
+            limit: Máximo de registros a retornar
+        
+        Returns:
+            Lista de análisis como diccionarios
+        """
+        with self.get_session() as session:
+            query = session.query(UserAnalysisHistory).filter_by(user_id=user_id)
+            
+            if segment:
+                query = query.filter_by(segment=segment)
+            
+            if exercise_type:
+                query = query.filter_by(exercise_type=exercise_type)
+            
+            if date_from:
+                try:
+                    from datetime import datetime
+                    date_from_dt = datetime.strptime(date_from, '%Y-%m-%d')
+                    query = query.filter(UserAnalysisHistory.created_at >= date_from_dt)
+                except ValueError:
+                    pass
+            
+            if date_to:
+                try:
+                    from datetime import datetime, timedelta
+                    date_to_dt = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+                    query = query.filter(UserAnalysisHistory.created_at < date_to_dt)
+                except ValueError:
+                    pass
+            
+            records = query.order_by(UserAnalysisHistory.created_at.desc()).limit(limit).all()
+            
+            return [record.to_dict() for record in records]
+    
+    def count_user_analysis_history(
+        self,
+        user_id: int,
+        segment: str = None,
+        exercise_type: str = None,
+        date_from: str = None,
+        date_to: str = None
+    ) -> int:
+        """
+        Cuenta el total de análisis de un usuario con filtros.
+        
+        Args:
+            user_id: ID del usuario
+            segment: Filtrar por segmento (opcional)
+            exercise_type: Filtrar por ejercicio (opcional)
+            date_from: Fecha desde (formato YYYY-MM-DD) (opcional)
+            date_to: Fecha hasta (formato YYYY-MM-DD) (opcional)
+        
+        Returns:
+            Número total de análisis
+        """
+        with self.get_session() as session:
+            query = session.query(func.count(UserAnalysisHistory.id)).filter_by(user_id=user_id)
+            
+            if segment:
+                query = query.filter(UserAnalysisHistory.segment == segment)
+            
+            if exercise_type:
+                query = query.filter(UserAnalysisHistory.exercise_type == exercise_type)
+            
+            if date_from:
+                try:
+                    from datetime import datetime
+                    date_from_dt = datetime.strptime(date_from, '%Y-%m-%d')
+                    query = query.filter(UserAnalysisHistory.created_at >= date_from_dt)
+                except ValueError:
+                    pass
+            
+            if date_to:
+                try:
+                    from datetime import datetime, timedelta
+                    date_to_dt = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+                    query = query.filter(UserAnalysisHistory.created_at < date_to_dt)
+                except ValueError:
+                    pass
+            
+            return query.scalar() or 0
+    
+    def get_session_by_id(self, session_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene una sesión ROM por ID como diccionario.
+        Alias de get_rom_session_by_id pero retorna diccionario.
+        
+        Args:
+            session_id: ID de la sesión ROM
+        
+        Returns:
+            Diccionario con datos de la sesión o None si no existe
+        """
+        with self.get_session() as session:
+            rom_session = session.query(ROMSession).filter_by(id=session_id).first()
+            if rom_session:
+                return rom_session.to_dict()
+            return None
+    
+    def get_user_analysis_by_id(self, analysis_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene un análisis de usuario por ID.
+        
+        Args:
+            analysis_id: ID del análisis en user_analysis_history
+        
+        Returns:
+            Diccionario con datos del análisis o None si no existe
+        """
+        with self.get_session() as session:
+            analysis = session.query(UserAnalysisHistory).filter_by(id=analysis_id).first()
+            if analysis:
+                return analysis.to_dict()
+            return None
+    
+    def get_recent_history_for_exercise(
+        self,
+        user_id: int,
+        segment: str,
+        exercise_type: str,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtiene el historial reciente para un ejercicio específico.
+        
+        Args:
+            user_id: ID del usuario
+            segment: Segmento corporal
+            exercise_type: Tipo de ejercicio
+            limit: Cantidad máxima de registros
+        
+        Returns:
+            Lista de análisis recientes como diccionarios
+        """
+        with self.get_session() as session:
+            records = session.query(UserAnalysisHistory).filter_by(
+                user_id=user_id,
+                segment=segment,
+                exercise_type=exercise_type
+            ).order_by(
+                UserAnalysisHistory.created_at.desc()
+            ).limit(limit).all()
+            
+            return [record.to_dict() for record in records]
+    
+    def get_recent_sessions_for_subject(
+        self,
+        subject_id: int,
+        segment: str,
+        exercise_type: str,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtiene las sesiones ROM recientes de un sujeto para un ejercicio específico.
+        Se usa para mostrar el historial en la interfaz de análisis cuando se analiza un sujeto.
+        
+        Args:
+            subject_id: ID del sujeto
+            segment: Segmento corporal
+            exercise_type: Tipo de ejercicio
+            limit: Cantidad máxima de registros
+        
+        Returns:
+            Lista de sesiones ROM como diccionarios
+        """
+        with self.get_session() as session:
+            records = session.query(ROMSession).filter_by(
+                subject_id=subject_id,
+                segment=segment,
+                exercise_type=exercise_type
+            ).order_by(
+                ROMSession.created_at.desc()
+            ).limit(limit).all()
+            
+            return [record.to_dict() for record in records]
+    
+    def get_user_analysis_stats(self, user_id: int, segment: str = None) -> Dict[str, Any]:
+        """
+        Obtiene estadísticas de análisis de un usuario.
+        
+        Args:
+            user_id: ID del usuario
+            segment: Filtrar por segmento (opcional)
+        
+        Returns:
+            Estadísticas de análisis
+        """
+        with self.get_session() as session:
+            query = session.query(UserAnalysisHistory).filter_by(user_id=user_id)
+            
+            if segment:
+                query = query.filter_by(segment=segment)
+            
+            records = query.all()
+            
+            if not records:
+                return {
+                    'total_analyses': 0,
+                    'avg_rom': 0,
+                    'max_rom': 0,
+                    'last_analysis': None
+                }
+            
+            rom_values = [r.rom_value for r in records if r.rom_value]
+            
+            return {
+                'total_analyses': len(records),
+                'avg_rom': round(sum(rom_values) / len(rom_values), 1) if rom_values else 0,
+                'max_rom': round(max(rom_values), 1) if rom_values else 0,
+                'last_analysis': records[0].created_at.isoformat() if records else None
+            }
+    
+    def get_admin_global_statistics(self) -> Dict[str, Any]:
+        """
+        Obtiene estadísticas globales del sistema para el dashboard del admin.
+        
+        Returns:
+            Diccionario con estadísticas globales:
+            - Contadores generales (usuarios, sujetos, sesiones)
+            - Estadísticas por segmento
+            - Actividad reciente
+            - Top estudiantes
+        """
+        with self.get_session() as session:
+            # ====== CONTADORES GENERALES ======
+            total_users = session.query(func.count(User.id)).scalar() or 0
+            total_students = session.query(func.count(User.id)).filter_by(role='student', is_active=True).scalar() or 0
+            total_admins = session.query(func.count(User.id)).filter_by(role='admin', is_active=True).scalar() or 0
+            total_subjects = session.query(func.count(Subject.id)).scalar() or 0
+            
+            # Sesiones ROM (análisis de sujetos)
+            total_rom_sessions = session.query(func.count(ROMSession.id)).scalar() or 0
+            
+            # Auto-análisis
+            total_self_analyses = session.query(func.count(UserAnalysisHistory.id)).scalar() or 0
+            
+            # Total combinado
+            total_analyses = total_rom_sessions + total_self_analyses
+            
+            # ====== ESTADÍSTICAS POR SEGMENTO ======
+            segments = ['shoulder', 'elbow', 'hip', 'knee', 'ankle']
+            segment_names = {
+                'shoulder': 'Hombro',
+                'elbow': 'Codo', 
+                'hip': 'Cadera',
+                'knee': 'Rodilla',
+                'ankle': 'Tobillo'
+            }
+            
+            segment_stats = []
+            for seg in segments:
+                # Contar de ambas tablas
+                rom_count = session.query(func.count(ROMSession.id)).filter_by(segment=seg).scalar() or 0
+                self_count = session.query(func.count(UserAnalysisHistory.id)).filter_by(segment=seg).scalar() or 0
+                total_seg = rom_count + self_count
+                
+                # Calcular porcentaje
+                percentage = round((total_seg / total_analyses * 100), 1) if total_analyses > 0 else 0
+                
+                segment_stats.append({
+                    'key': seg,
+                    'name': segment_names[seg],
+                    'count': total_seg,
+                    'percentage': percentage
+                })
+            
+            # Ordenar por cantidad (mayor a menor)
+            segment_stats.sort(key=lambda x: x['count'], reverse=True)
+            
+            # ====== ESTADÍSTICAS POR EJERCICIO ======
+            exercise_names = {
+                'flexion': 'Flexión',
+                'extension': 'Extensión',
+                'abduction': 'Abducción',
+                'adduction': 'Aducción',
+                'internal_rotation': 'Rot. Interna',
+                'external_rotation': 'Rot. Externa'
+            }
+            
+            exercise_stats = []
+            for ex_key, ex_name in exercise_names.items():
+                rom_count = session.query(func.count(ROMSession.id)).filter_by(exercise_type=ex_key).scalar() or 0
+                self_count = session.query(func.count(UserAnalysisHistory.id)).filter_by(exercise_type=ex_key).scalar() or 0
+                total_ex = rom_count + self_count
+                
+                if total_ex > 0:
+                    percentage = round((total_ex / total_analyses * 100), 1) if total_analyses > 0 else 0
+                    exercise_stats.append({
+                        'key': ex_key,
+                        'name': ex_name,
+                        'count': total_ex,
+                        'percentage': percentage
+                    })
+            
+            exercise_stats.sort(key=lambda x: x['count'], reverse=True)
+            
+            # ====== TOP ESTUDIANTES (por actividad) ======
+            top_students = []
+            students = session.query(User).filter_by(role='student', is_active=True).all()
+            
+            for student in students:
+                rom_count = session.query(func.count(ROMSession.id)).filter_by(user_id=student.id).scalar() or 0
+                self_count = session.query(func.count(UserAnalysisHistory.id)).filter_by(user_id=student.id).scalar() or 0
+                subjects_count = session.query(func.count(Subject.id)).filter_by(created_by=student.id).scalar() or 0
+                
+                total_activity = rom_count + self_count
+                
+                if total_activity > 0:
+                    top_students.append({
+                        'id': student.id,
+                        'name': student.full_name,
+                        'username': student.username,
+                        'analyses': total_activity,
+                        'subjects': subjects_count,
+                        'last_login': student.last_login.isoformat() if student.last_login else None
+                    })
+            
+            # Ordenar por actividad
+            top_students.sort(key=lambda x: x['analyses'], reverse=True)
+            top_students = top_students[:10]  # Top 10
+            
+            # ====== ACTIVIDAD RECIENTE (últimos 7 días) ======
+            from datetime import datetime, timedelta
+            seven_days_ago = datetime.utcnow() - timedelta(days=7)
+            
+            recent_rom = session.query(func.count(ROMSession.id)).filter(
+                ROMSession.created_at >= seven_days_ago
+            ).scalar() or 0
+            
+            recent_self = session.query(func.count(UserAnalysisHistory.id)).filter(
+                UserAnalysisHistory.created_at >= seven_days_ago
+            ).scalar() or 0
+            
+            recent_subjects = session.query(func.count(Subject.id)).filter(
+                Subject.created_at >= seven_days_ago
+            ).scalar() or 0
+            
+            # ====== ÚLTIMA ACTIVIDAD ======
+            last_rom = session.query(ROMSession).order_by(ROMSession.created_at.desc()).first()
+            last_self = session.query(UserAnalysisHistory).order_by(UserAnalysisHistory.created_at.desc()).first()
+            
+            last_activity = None
+            if last_rom and last_self:
+                last_activity = max(last_rom.created_at, last_self.created_at).isoformat()
+            elif last_rom:
+                last_activity = last_rom.created_at.isoformat()
+            elif last_self:
+                last_activity = last_self.created_at.isoformat()
+            
+            return {
+                # Contadores principales
+                'total_users': total_users,
+                'total_students': total_students,
+                'total_admins': total_admins,
+                'total_subjects': total_subjects,
+                'total_analyses': total_analyses,
+                'total_rom_sessions': total_rom_sessions,
+                'total_self_analyses': total_self_analyses,
+                
+                # Por segmento y ejercicio
+                'segment_stats': segment_stats,
+                'exercise_stats': exercise_stats,
+                
+                # Top estudiantes
+                'top_students': top_students,
+                
+                # Actividad reciente (7 días)
+                'recent_analyses': recent_rom + recent_self,
+                'recent_subjects': recent_subjects,
+                
+                # Última actividad
+                'last_activity': last_activity
+            }
+    
+    def get_all_students_with_stats(self) -> List[Dict[str, Any]]:
+        """
+        Obtiene todos los estudiantes con sus estadísticas para el admin.
+        
+        Returns:
+            Lista de estudiantes con estadísticas
+        """
+        with self.get_session() as session:
+            students = session.query(User).filter_by(role='student').order_by(User.created_at.desc()).all()
+            
+            result = []
+            for student in students:
+                rom_count = session.query(func.count(ROMSession.id)).filter_by(user_id=student.id).scalar() or 0
+                self_count = session.query(func.count(UserAnalysisHistory.id)).filter_by(user_id=student.id).scalar() or 0
+                subjects_count = session.query(func.count(Subject.id)).filter_by(created_by=student.id).scalar() or 0
+                
+                result.append({
+                    'id': student.id,
+                    'username': student.username,
+                    'full_name': student.full_name,
+                    'email': student.email,
+                    'student_id': student.student_id,
+                    'program': student.program,
+                    'semester': student.semester,
+                    'is_active': student.is_active,
+                    'created_at': student.created_at.isoformat() if student.created_at else None,
+                    'last_login': student.last_login.isoformat() if student.last_login else None,
+                    'total_analyses': rom_count + self_count,
+                    'rom_sessions': rom_count,
+                    'self_analyses': self_count,
+                    'subjects_count': subjects_count
+                })
+            
+            return result
     
     def get_database_info(self) -> Dict[str, Any]:
         """Obtiene información general de la base de datos"""

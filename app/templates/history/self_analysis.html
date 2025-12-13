@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Historial - BioTrack{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="bi bi-clock-history text-primary me-2"></i>
+                        Mi Historial de Análisis
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Revisa tus auto-análisis ROM anteriores
+                        {% if total_count > 0 %}
+                            <span class="badge bg-primary ms-2">{{ total_count }} análisis</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('pdf.download_history_report', segment=filters.segment or '', from_date=filters.from_date or '', to_date=filters.to_date or '') }}" 
+                       class="btn btn-outline-danger" title="Descargar PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>
+                        PDF
+                    </a>
+                    <a href="{{ url_for('main.segments') }}" class="btn btn-primary">
+                        <i class="bi bi-play-circle me-2"></i>
+                        Nuevo Análisis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body py-3">
+                    <form method="GET" action="{{ url_for('main.history') }}" class="row g-3 align-items-end">
+                        <!-- Filtro por Segmento -->
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small">Segmento</label>
+                            <select name="segment" class="form-select bg-dark text-light border-secondary">
+                                <option value="">Todos los segmentos</option>
+                                <option value="shoulder" {% if filters.segment == 'shoulder' %}selected{% endif %}>Hombro</option>
+                                <option value="elbow" {% if filters.segment == 'elbow' %}selected{% endif %}>Codo</option>
+                                <option value="hip" {% if filters.segment == 'hip' %}selected{% endif %}>Cadera</option>
+                                <option value="knee" {% if filters.segment == 'knee' %}selected{% endif %}>Rodilla</option>
+                                <option value="ankle" {% if filters.segment == 'ankle' %}selected{% endif %}>Tobillo</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Filtro por Ejercicio -->
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small">Ejercicio</label>
+                            <select name="exercise" class="form-select bg-dark text-light border-secondary">
+                                <option value="">Todos los ejercicios</option>
+                                <option value="flexion" {% if filters.exercise == 'flexion' %}selected{% endif %}>Flexión</option>
+                                <option value="extension" {% if filters.exercise == 'extension' %}selected{% endif %}>Extensión</option>
+                                <option value="abduction" {% if filters.exercise == 'abduction' %}selected{% endif %}>Abducción</option>
+                                <option value="adduction" {% if filters.exercise == 'adduction' %}selected{% endif %}>Aducción</option>
+                                <option value="internal_rotation" {% if filters.exercise == 'internal_rotation' %}selected{% endif %}>Rotación Interna</option>
+                                <option value="external_rotation" {% if filters.exercise == 'external_rotation' %}selected{% endif %}>Rotación Externa</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Filtro por Fecha Desde -->
+                        <div class="col-md-2">
+                            <label class="form-label text-muted small">Desde</label>
+                            <input type="date" name="date_from" class="form-control bg-dark text-light border-secondary"
+                                   value="{{ filters.date_from or '' }}">
+                        </div>
+                        
+                        <!-- Filtro por Fecha Hasta -->
+                        <div class="col-md-2">
+                            <label class="form-label text-muted small">Hasta</label>
+                            <input type="date" name="date_to" class="form-control bg-dark text-light border-secondary"
+                                   value="{{ filters.date_to or '' }}">
+                        </div>
+                        
+                        <!-- Botones -->
+                        <div class="col-md-2">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-outline-primary flex-grow-1">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                {% if filters.segment or filters.exercise or filters.date_from or filters.date_to %}
+                                <a href="{{ url_for('main.history') }}" class="btn btn-outline-secondary" title="Limpiar filtros">
+                                    <i class="bi bi-x-lg"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas Rápidas -->
+    {% if stats %}
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-graph-up text-success fs-3 mb-2"></i>
+                    <h4 class="text-success mb-0">{{ stats.total_analyses }}</h4>
+                    <small class="text-muted">Total Análisis</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-bullseye text-info fs-3 mb-2"></i>
+                    <h4 class="text-info mb-0">{{ stats.avg_rom|round(1) }}°</h4>
+                    <small class="text-muted">ROM Promedio</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-trophy text-warning fs-3 mb-2"></i>
+                    <h4 class="text-warning mb-0">{{ stats.max_rom|round(1) }}°</h4>
+                    <small class="text-muted">ROM Máximo</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-calendar-check text-primary fs-3 mb-2"></i>
+                    <h4 class="text-primary mb-0">
+                        {% if stats.last_analysis %}
+                            {{ stats.last_analysis[:10] }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </h4>
+                    <small class="text-muted">Último Análisis</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabla de Análisis -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body">
+                    {% if analyses and analyses|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Fecha</th>
+                                    <th scope="col">Segmento</th>
+                                    <th scope="col">Ejercicio</th>
+                                    <th scope="col">Lado</th>
+                                    <th scope="col">ROM</th>
+                                    <th scope="col">Clasificación</th>
+                                    <th scope="col">Calidad</th>
+                                    <th scope="col" class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for analysis in analyses %}
+                                <tr>
+                                    <!-- Fecha -->
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="text-light">{{ analysis.date or '-' }}</span>
+                                            <small class="text-muted">{{ analysis.time or '' }}</small>
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Segmento -->
+                                    <td>
+                                        {% set segment_colors = {
+                                            'shoulder': 'primary',
+                                            'elbow': 'info',
+                                            'hip': 'success',
+                                            'knee': 'warning',
+                                            'ankle': 'danger'
+                                        } %}
+                                        {% set segment_names = {
+                                            'shoulder': 'Hombro',
+                                            'elbow': 'Codo',
+                                            'hip': 'Cadera',
+                                            'knee': 'Rodilla',
+                                            'ankle': 'Tobillo'
+                                        } %}
+                                        <span class="badge bg-{{ segment_colors.get(analysis.segment, 'secondary') }}">
+                                            {{ segment_names.get(analysis.segment, analysis.segment|title) }}
+                                        </span>
+                                    </td>
+                                    
+                                    <!-- Ejercicio -->
+                                    <td>
+                                        {% set exercise_names = {
+                                            'flexion': 'Flexión',
+                                            'extension': 'Extensión',
+                                            'abduction': 'Abducción',
+                                            'adduction': 'Aducción',
+                                            'internal_rotation': 'Rot. Interna',
+                                            'external_rotation': 'Rot. Externa'
+                                        } %}
+                                        {{ exercise_names.get(analysis.exercise_type, analysis.exercise_type|replace('_', ' ')|title) }}
+                                    </td>
+                                    
+                                    <!-- Lado -->
+                                    <td>
+                                        {% if analysis.side == 'left' %}
+                                            <span class="badge bg-info">Izquierdo</span>
+                                        {% elif analysis.side == 'right' %}
+                                            <span class="badge bg-warning text-dark">Derecho</span>
+                                        {% elif analysis.side == 'bilateral' %}
+                                            <span class="badge bg-success">Bilateral</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- ROM -->
+                                    <td>
+                                        {% if analysis.side == 'bilateral' and analysis.left_rom and analysis.right_rom %}
+                                            <div class="d-flex flex-column">
+                                                <span class="text-info small">I: {{ analysis.left_rom|round(1) }}°</span>
+                                                <span class="text-warning small">D: {{ analysis.right_rom|round(1) }}°</span>
+                                            </div>
+                                        {% elif analysis.rom_value %}
+                                            <strong class="text-success fs-5">{{ analysis.rom_value|round(1) }}°</strong>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- Clasificación -->
+                                    <td>
+                                        {% if analysis.classification %}
+                                            {% set class_colors = {
+                                                'Normal': 'success',
+                                                'Hipermóvil': 'info',
+                                                'Limitado': 'warning',
+                                                'Muy limitado': 'danger',
+                                                'Severo': 'danger'
+                                            } %}
+                                            <span class="badge bg-{{ class_colors.get(analysis.classification, 'secondary') }}">
+                                                {{ analysis.classification }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- Calidad -->
+                                    <td>
+                                        {% if analysis.quality_score %}
+                                            {% set quality = analysis.quality_score %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress" style="width: 50px; height: 6px;">
+                                                    <div class="progress-bar 
+                                                        {% if quality >= 80 %}bg-success
+                                                        {% elif quality >= 60 %}bg-warning
+                                                        {% else %}bg-danger{% endif %}"
+                                                        style="width: {{ quality }}%">
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">{{ quality|round(0) }}%</small>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- Acciones -->
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-secondary" disabled 
+                                                data-bs-toggle="tooltip" 
+                                                title="Próximamente: Ver detalles, Exportar PDF">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Paginación (si hay muchos registros) -->
+                    {% if total_count > analyses|length %}
+                    <div class="d-flex justify-content-center mt-4">
+                        <p class="text-muted">
+                            Mostrando {{ analyses|length }} de {{ total_count }} análisis
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    {% else %}
+                    <!-- Estado vacío -->
+                    <div class="text-center py-5">
+                        <i class="bi bi-clock-history display-1 text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay análisis registrados</h4>
+                        <p class="text-muted mb-4">
+                            {% if filters.segment or filters.exercise or filters.date_from or filters.date_to %}
+                                No se encontraron análisis con los filtros seleccionados.
+                                <br>
+                                <a href="{{ url_for('main.history') }}" class="text-primary">Limpiar filtros</a>
+                            {% else %}
+                                Tus auto-análisis aparecerán aquí después de completarlos
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('main.segments') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-play-circle me-2"></i>
+                            Iniciar Análisis
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}
