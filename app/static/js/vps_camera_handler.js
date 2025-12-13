@@ -24,7 +24,7 @@ class VPSCameraHandler {
             height: options.height || 480,
             videoElementId: options.videoElementId || 'videoFeed',
             canvasElementId: options.canvasElementId || 'captureCanvas',
-            processEndpoint: options.processEndpoint || '/api/vps/process_frame',
+            processEndpoint: options.processEndpoint || '/api/camera/process_frame',
             ...options
         };
         
