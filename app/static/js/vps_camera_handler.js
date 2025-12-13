@@ -96,23 +96,73 @@ class VPSCameraHandler {
             // Primero detener cualquier stream existente
             this.stop();
             
-            // Pequeña pausa para liberar el dispositivo
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Pausa más larga para liberar el dispositivo completamente
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            // Solicitar acceso a la cámara
-            const constraints = {
-                video: {
-                    width: { ideal: this.options.width },
-                    height: { ideal: this.options.height },
-                    facingMode: 'user'
+            // Intentar con diferentes configuraciones de constraints
+            const constraintsList = [
+                // Primero: constraints específicos
+                {
+                    video: {
+                        width: { ideal: this.options.width },
+                        height: { ideal: this.options.height },
+                        facingMode: 'user'
+                    },
+                    audio: false
                 },
-                audio: false
-            };
+                // Segundo: constraints simples
+                {
+                    video: {
+                        facingMode: 'user'
+                    },
+                    audio: false
+                },
+                // Tercero: lo más básico posible
+                {
+                    video: true,
+                    audio: false
+                }
+            ];
             
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            let stream = null;
+            let lastError = null;
+            
+            for (const constraints of constraintsList) {
+                try {
+                    console.log('[VPSCamera] Intentando con constraints:', JSON.stringify(constraints));
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    console.log('[VPSCamera] ✅ Constraints aceptados');
+                    break;
+                } catch (err) {
+                    console.warn('[VPSCamera] Constraints rechazados:', err.message);
+                    lastError = err;
+                    // Esperar antes de intentar el siguiente
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+            
+            if (!stream) {
+                throw lastError || new Error('No se pudo obtener acceso a la cámara');
+            }
+            
+            this.stream = stream;
             
             // Asignar stream al video de captura
             this.captureVideo.srcObject = this.stream;
+            
+            // Esperar a que el video esté listo
+            await new Promise((resolve, reject) => {
+                this.captureVideo.onloadedmetadata = () => {
+                    console.log('[VPSCamera] Metadata del video cargada');
+                    resolve();
+                };
+                this.captureVideo.onerror = (e) => {
+                    reject(new Error('Error cargando video: ' + e.message));
+                };
+                // Timeout de seguridad
+                setTimeout(() => resolve(), 3000);
+            });
+            
             await this.captureVideo.play();
             
             console.log('[VPSCamera] ✅ Cámara del cliente iniciada');
@@ -151,11 +201,17 @@ class VPSCameraHandler {
      * Detiene la captura
      */
     stop() {
+        if (!this.stream && !this.isRunning) {
+            return; // Nada que detener
+        }
         console.log('[VPSCamera] Deteniendo captura...');
         this.isRunning = false;
         
         if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
+            this.stream.getTracks().forEach(track => {
+                console.log('[VPSCamera] Deteniendo track:', track.kind);
+                track.stop();
+            });
             this.stream = null;
         }
         
