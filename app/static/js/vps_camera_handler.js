@@ -260,8 +260,13 @@ class VPSCameraHandler {
             this.canvasElement.height
         );
         
-        // Convertir a base64 JPEG
-        const frameData = this.canvasElement.toDataURL('image/jpeg', this.options.quality);
+        // Mostrar frame raw inmediatamente (mientras esperamos procesamiento)
+        const rawFrame = this.canvasElement.toDataURL('image/jpeg', this.options.quality);
+        
+        // Si no hay frame procesado aún, mostrar el raw
+        if (this.videoElement && !this._hasProcessedFrame) {
+            this.videoElement.src = rawFrame;
+        }
         
         // Enviar al servidor para procesamiento
         try {
@@ -271,7 +276,7 @@ class VPSCameraHandler {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    frame: frameData,
+                    frame: rawFrame,
                     frame_number: this.frameCount
                 })
             });
@@ -279,19 +284,34 @@ class VPSCameraHandler {
             if (response.ok) {
                 const data = await response.json();
                 
-                if (data.success && data.processed_frame) {
+                // El API retorna 'frame' no 'processed_frame'
+                if (data.success && data.frame) {
+                    this._hasProcessedFrame = true;
                     // Mostrar frame procesado
                     if (this.videoElement) {
-                        this.videoElement.src = data.processed_frame;
+                        this.videoElement.src = data.frame;
                     }
                 }
                 
                 // Actualizar datos de análisis si existen
-                if (data.analysis_data && window.liveAnalysisController) {
-                    window.liveAnalysisController.updateFromVPSData(data.analysis_data);
+                if (data.analysis && window.liveAnalysisController) {
+                    window.liveAnalysisController.updateFromVPSData(data.analysis);
+                }
+            } else {
+                // Si el servidor falla, mostrar frame raw
+                if (this.videoElement) {
+                    this.videoElement.src = rawFrame;
+                }
+                // Log error ocasionalmente
+                if (this.frameCount % 30 === 0) {
+                    console.warn(`[VPSCamera] Server error ${response.status}`);
                 }
             }
         } catch (error) {
+            // Si hay error de red, mostrar frame raw
+            if (this.videoElement) {
+                this.videoElement.src = rawFrame;
+            }
             // Solo loguear errores ocasionalmente para no saturar la consola
             if (this.frameCount % 30 === 0) {
                 console.warn('[VPSCamera] Error enviando frame:', error.message);

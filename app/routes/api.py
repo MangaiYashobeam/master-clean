@@ -963,16 +963,55 @@ def process_client_frame():
         analyzer_class = ANALYZER_MAP.get(exercise_type)
         
         if not analyzer_class:
+            # Si no hay analyzer, devolver el frame sin procesar
+            logger.warning(f"Tipo de ejercicio no soportado: {exercise_type}, devolviendo frame sin procesar")
+            jpeg_quality = session.get('jpeg_quality', 50)
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
+            if ret:
+                processed_base64 = base64.b64encode(buffer).decode('utf-8')
+                return jsonify({
+                    'success': True,
+                    'frame': f'data:image/jpeg;base64,{processed_base64}',
+                    'analysis': {'exercise_type': exercise_type, 'error': 'Tipo no soportado'}
+                }), 200
             return jsonify({
                 'success': False,
                 'error': f'Tipo de ejercicio no soportado: {exercise_type}'
             }), 400
         
         # Obtener o crear analyzer cacheado
-        analyzer = get_cached_analyzer(exercise_type, analyzer_class)
+        try:
+            analyzer = get_cached_analyzer(exercise_type, analyzer_class)
+        except Exception as analyzer_error:
+            logger.error(f"Error creando analyzer: {analyzer_error}")
+            # Devolver frame sin procesar si falla el analyzer
+            jpeg_quality = session.get('jpeg_quality', 50)
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
+            if ret:
+                processed_base64 = base64.b64encode(buffer).decode('utf-8')
+                return jsonify({
+                    'success': True,
+                    'frame': f'data:image/jpeg;base64,{processed_base64}',
+                    'analysis': {'error': str(analyzer_error)}
+                }), 200
+            raise analyzer_error
         
         # Procesar frame con MediaPipe
-        result = analyzer.process_frame(frame)
+        try:
+            result = analyzer.process_frame(frame)
+        except Exception as process_error:
+            logger.error(f"Error en process_frame: {process_error}")
+            # Devolver frame sin procesar si falla el procesamiento
+            jpeg_quality = session.get('jpeg_quality', 50)
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
+            if ret:
+                processed_base64 = base64.b64encode(buffer).decode('utf-8')
+                return jsonify({
+                    'success': True,
+                    'frame': f'data:image/jpeg;base64,{processed_base64}',
+                    'analysis': {'error': str(process_error)}
+                }), 200
+            raise process_error
         
         # El analyzer puede retornar solo el frame o una tupla (frame, data)
         if isinstance(result, tuple):
