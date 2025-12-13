@@ -138,6 +138,11 @@ class Config:
     # CONFIGURACIÓN DE CÁMARA
     # ========================================================================
     
+    # 🌐 MODO DE CÁMARA: 'localhost' o 'vps'
+    # - localhost: Cámara local del navegador, procesamiento en servidor local
+    # - vps: Cámara del cliente (WebRTC), procesamiento optimizado para servidor remoto
+    CAMERA_MODE = os.environ.get('CAMERA_MODE', 'localhost')
+    
     # Índice de cámara por defecto (0=integrada, 1+=externa)
     CAMERA_INDEX = 0
     
@@ -305,6 +310,19 @@ class ProductionConfig(Config):
     # Forzar HTTPS
     FORCE_HTTPS = True
     SESSION_COOKIE_SECURE = True
+    
+    # 🌐 VPS Mode por defecto en producción
+    CAMERA_MODE = os.environ.get('CAMERA_MODE', 'vps')
+    
+    # Configuración optimizada para VPS
+    CAMERA_PROCESSING_WIDTH = 640
+    CAMERA_PROCESSING_HEIGHT = 480
+    JPEG_QUALITY = 50
+    
+    # MediaPipe optimizado para servidor
+    MEDIAPIPE_MIN_DETECTION_CONFIDENCE = 0.3
+    MEDIAPIPE_MIN_TRACKING_CONFIDENCE = 0.3
+    MEDIAPIPE_MODEL_COMPLEXITY = 0  # Lite para VPS
     
     # Clave secreta desde variable de entorno (OBLIGATORIO)
     SECRET_KEY = os.environ.get('SECRET_KEY')

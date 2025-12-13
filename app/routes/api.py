@@ -805,6 +805,93 @@ def camera_config():
         }), 500
 
 
+@api_bp.route('/camera/mode', methods=['GET', 'POST'])
+@login_required
+def camera_mode():
+    """
+    Obtiene o establece el modo de cámara (localhost vs vps)
+    
+    GET: Retorna el modo actual
+    POST: Establece el modo
+    
+    Modos:
+        - localhost: Cámara local del servidor, procesamiento local
+        - vps: Cámara del cliente (WebRTC), procesamiento remoto optimizado
+    
+    Body JSON (POST):
+        mode: str - 'localhost' o 'vps'
+    """
+    from app.core.mediapipe_config import MediaPipeConfig
+    
+    if request.method == 'GET':
+        # Obtener modo actual
+        current_mode = session.get('camera_mode')
+        if not current_mode:
+            # Si no está en sesión, obtener del config/auto-detect
+            current_mode = MediaPipeConfig.get_camera_mode()
+        
+        settings = MediaPipeConfig.get_optimized_settings()
+        
+        return jsonify({
+            'success': True,
+            'mode': current_mode,
+            'settings': settings,
+            'description': {
+                'localhost': 'Cámara conectada al servidor local',
+                'vps': 'Cámara del navegador del cliente (WebRTC)'
+            }.get(current_mode, 'Modo desconocido')
+        }), 200
+    
+    # POST: Establecer modo
+    try:
+        data = request.get_json() or {}
+        new_mode = data.get('mode', '').lower()
+        
+        if new_mode not in ['localhost', 'vps']:
+            return jsonify({
+                'success': False,
+                'error': 'Modo inválido. Use "localhost" o "vps"'
+            }), 400
+        
+        # Guardar en sesión
+        session['camera_mode'] = new_mode
+        session.modified = True
+        
+        # Obtener configuración optimizada para el nuevo modo
+        settings = MediaPipeConfig.get_optimized_settings()
+        
+        # Aplicar configuración recomendada automáticamente
+        if new_mode == 'vps':
+            session['processing_width'] = 640
+            session['processing_height'] = 480
+            session['jpeg_quality'] = 50
+        else:
+            session['processing_width'] = 960
+            session['processing_height'] = 540
+            session['jpeg_quality'] = 60
+        
+        logger.info(f"[camera_mode] Modo cambiado a: {new_mode}")
+        
+        return jsonify({
+            'success': True,
+            'mode': new_mode,
+            'settings': settings,
+            'message': f'Modo cambiado a {new_mode}',
+            'applied_config': {
+                'processing_width': session['processing_width'],
+                'processing_height': session['processing_height'],
+                'jpeg_quality': session['jpeg_quality']
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error en camera_mode: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 # ============================================================================
 # VIDEO STREAMING Y ANÁLISIS EN VIVO (NUEVO)
 # ============================================================================
@@ -838,15 +925,7 @@ def video_feed():
     user_id = session.get('user_id')
     
     # Obtener configuración de cámara desde session (con defaults de config)
-    # Soporte para cámaras RTSP/HTTP (string) o índice entero
-    camera_param = request.args.get('camera', None)
-    if camera_param is None:
-        camera_param = session.get('camera_index', current_app.config.get('CAMERA_INDEX', 0))
-
-    try:
-        camera_session_index = int(camera_param)
-    except (TypeError, ValueError):
-        camera_session_index = camera_param  # Puede ser URL/rtsp
+    camera_session_index = request.args.get('camera', session.get('camera_index', current_app.config.get('CAMERA_INDEX', 0)), type=int)
     jpeg_quality = session.get('jpeg_quality', current_app.config.get('JPEG_QUALITY', 60))
     processing_width = session.get('processing_width', current_app.config.get('CAMERA_PROCESSING_WIDTH', 960))
     processing_height = session.get('processing_height', current_app.config.get('CAMERA_PROCESSING_HEIGHT', 540))

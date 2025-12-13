@@ -252,7 +252,7 @@
 
 <!-- ⚙️ MODAL DE CONFIGURACIÓN DE CÁMARA -->
 <div id="cameraConfigModal" class="modal fade" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white">
                 <h5 class="modal-title">
@@ -262,6 +262,38 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <!-- 🌐 SELECTOR DE MODO (LocalHost vs VPS) -->
+                <div class="card mb-4 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-cloud-check me-2"></i>
+                        <strong>Modo de Operación</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-info w-100 py-3 mode-btn" 
+                                        id="btnModeLocalhost" onclick="setCameraMode('localhost')">
+                                    <i class="bi bi-pc-display fs-3 d-block mb-2"></i>
+                                    <strong>Modo LocalHost</strong>
+                                    <small class="d-block text-muted">Cámara del servidor</small>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-success w-100 py-3 mode-btn" 
+                                        id="btnModeVps" onclick="setCameraMode('vps')">
+                                    <i class="bi bi-cloud fs-3 d-block mb-2"></i>
+                                    <strong>Modo VPS</strong>
+                                    <small class="d-block text-muted">Cámara del navegador</small>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3 mb-0" id="modeDescription">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <span id="modeDescriptionText">Selecciona el modo según tu entorno</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Alerta de sesión activa -->
                 <div id="configSessionWarning" class="alert alert-warning d-none">
                     <i class="bi bi-exclamation-triangle me-2"></i>
@@ -270,7 +302,7 @@
                 </div>
                 
                 <!-- Selector de Cámara -->
-                <div class="mb-4">
+                <div class="mb-4" id="cameraSelectSection">
                     <label class="form-label fw-bold">
                         <i class="bi bi-camera-video me-1"></i> Cámara
                     </label>
@@ -286,6 +318,7 @@
                         <i class="bi bi-aspect-ratio me-1"></i> Resolución
                     </label>
                     <select id="resolutionSelect" class="form-select">
+                        <option value="640x480">480p (VPS) - Optimizado servidor</option>
                         <option value="854x480">480p (SD) - Más rápido</option>
                         <option value="960x540" selected>540p - Recomendado</option>
                         <option value="1280x720">720p (HD)</option>

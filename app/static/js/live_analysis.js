@@ -2299,6 +2299,113 @@ document.addEventListener('keydown', (e) => {
 
 let cameraConfigModal = null;
 let originalCameraConfig = null;  // Guardar config original al abrir modal
+let currentCameraMode = 'localhost';  // Modo actual: 'localhost' o 'vps'
+
+/**
+ * 🌐 Establece el modo de cámara (LocalHost o VPS)
+ * @param {string} mode - 'localhost' o 'vps'
+ */
+async function setCameraMode(mode) {
+    console.log(`[CameraMode] Cambiando a modo: ${mode}`);
+    currentCameraMode = mode;
+    
+    // Actualizar UI de botones
+    const btnLocalhost = document.getElementById('btnModeLocalhost');
+    const btnVps = document.getElementById('btnModeVps');
+    const modeDescText = document.getElementById('modeDescriptionText');
+    const cameraSelectSection = document.getElementById('cameraSelectSection');
+    const resolutionSelect = document.getElementById('resolutionSelect');
+    
+    // Remover active de ambos botones
+    btnLocalhost?.classList.remove('btn-info', 'active');
+    btnLocalhost?.classList.add('btn-outline-info');
+    btnVps?.classList.remove('btn-success', 'active');
+    btnVps?.classList.add('btn-outline-success');
+    
+    if (mode === 'localhost') {
+        btnLocalhost?.classList.remove('btn-outline-info');
+        btnLocalhost?.classList.add('btn-info', 'active');
+        
+        if (modeDescText) {
+            modeDescText.innerHTML = '<strong>LocalHost:</strong> La cámara está conectada directamente al servidor. ' +
+                'Ideal para desarrollo local o cuando el servidor tiene acceso físico a la cámara.';
+        }
+        
+        // Mostrar selector de cámara del servidor
+        if (cameraSelectSection) cameraSelectSection.style.display = 'block';
+        
+        // Resolución recomendada para localhost
+        if (resolutionSelect) resolutionSelect.value = '960x540';
+        
+    } else if (mode === 'vps') {
+        btnVps?.classList.remove('btn-outline-success');
+        btnVps?.classList.add('btn-success', 'active');
+        
+        if (modeDescText) {
+            modeDescText.innerHTML = '<strong>VPS (Servidor Remoto):</strong> La cámara está en tu navegador (cliente). ' +
+                'El video se envía al servidor para procesamiento. Optimizado para conexiones remotas con menor resolución y calidad para mejor rendimiento.';
+        }
+        
+        // Ocultar selector de cámara del servidor (usará WebRTC del cliente)
+        if (cameraSelectSection) cameraSelectSection.style.display = 'none';
+        
+        // Resolución optimizada para VPS
+        if (resolutionSelect) resolutionSelect.value = '640x480';
+        
+        // Reducir calidad JPEG para VPS
+        const slider = document.getElementById('jpegQualitySlider');
+        const valueDisplay = document.getElementById('jpegQualityValue');
+        if (slider && valueDisplay) {
+            slider.value = 50;
+            valueDisplay.textContent = '50';
+        }
+    }
+    
+    // Guardar el modo en el servidor
+    try {
+        const response = await fetch('/api/camera/mode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: mode })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            console.log(`[CameraMode] Modo ${mode} guardado en servidor`);
+        }
+    } catch (error) {
+        console.error('[CameraMode] Error al guardar modo:', error);
+    }
+}
+
+/**
+ * Carga el modo de cámara actual del servidor
+ */
+async function loadCameraMode() {
+    try {
+        const response = await fetch('/api/camera/mode');
+        const data = await response.json();
+        
+        if (data.success && data.mode) {
+            currentCameraMode = data.mode;
+            // Actualizar UI sin llamar al servidor de nuevo
+            const btnLocalhost = document.getElementById('btnModeLocalhost');
+            const btnVps = document.getElementById('btnModeVps');
+            
+            if (currentCameraMode === 'localhost') {
+                btnLocalhost?.classList.remove('btn-outline-info');
+                btnLocalhost?.classList.add('btn-info', 'active');
+            } else if (currentCameraMode === 'vps') {
+                btnVps?.classList.remove('btn-outline-success');
+                btnVps?.classList.add('btn-success', 'active');
+            }
+            
+            console.log(`[CameraMode] Modo cargado: ${currentCameraMode}`);
+        }
+    } catch (error) {
+        console.warn('[CameraMode] Error al cargar modo (usando default localhost):', error);
+    }
+}
 
 /**
  * Abre el modal de configuración de cámara
@@ -2328,11 +2435,15 @@ async function openCameraConfig() {
     // Cargar configuración actual
     await loadCameraConfig();
     
+    // Cargar modo de cámara
+    await loadCameraMode();
+    
     // Guardar copia de la configuración original
     originalCameraConfig = {
         camera_index: document.getElementById('cameraSelect')?.value,
         resolution: document.getElementById('resolutionSelect')?.value,
-        jpeg_quality: document.getElementById('jpegQualitySlider')?.value
+        jpeg_quality: document.getElementById('jpegQualitySlider')?.value,
+        camera_mode: currentCameraMode
     };
     
     // Configurar listener del slider

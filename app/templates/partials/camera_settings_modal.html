@@ -12,10 +12,42 @@
             </button>
         </div>
         
+        <!-- 🌐 NUEVO: Selector de Modo (LocalHost vs VPS) -->
+        <div class="settings-section mode-selector-section">
+            <label class="settings-label">
+                <i class="bi bi-cloud-check"></i>
+                Modo de Operacion
+            </label>
+            <div class="mode-toggle-container">
+                <button class="mode-toggle-btn" id="modeLocalhost" data-mode="localhost" onclick="setCameraMode('localhost')">
+                    <i class="bi bi-pc-display"></i>
+                    <div class="mode-info">
+                        <span class="mode-name">Modo LocalHost</span>
+                        <small>Camara local del servidor</small>
+                    </div>
+                </button>
+                <button class="mode-toggle-btn" id="modeVps" data-mode="vps" onclick="setCameraMode('vps')">
+                    <i class="bi bi-cloud"></i>
+                    <div class="mode-info">
+                        <span class="mode-name">Modo VPS</span>
+                        <small>Camara del navegador (WebRTC)</small>
+                    </div>
+                </button>
+            </div>
+            <div class="mode-description" id="modeDescription">
+                <i class="bi bi-info-circle"></i>
+                <span id="modeDescriptionText">Selecciona el modo segun tu entorno</span>
+            </div>
+        </div>
+        
         <!-- Configuracion Actual -->
         <div class="current-config-banner">
             <div class="config-label">Configuracion Actual:</div>
             <div class="config-items">
+                <span class="config-item">
+                    <i class="bi bi-cloud-check"></i>
+                    <strong id="currentMode">Auto</strong>
+                </span>
                 <span class="config-item">
                     <i class="bi bi-camera-video"></i>
                     <strong id="currentCameraName">Automatico</strong>
@@ -335,6 +367,92 @@
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.85rem;
     margin-top: 0.25rem;
+}
+
+/* 🌐 Mode Toggle Styles */
+.mode-selector-section {
+    background: rgba(0, 100, 150, 0.15);
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    margin-bottom: 1.5rem;
+}
+
+.mode-toggle-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.mode-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.mode-toggle-btn i {
+    font-size: 1.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    transition: color 0.3s;
+}
+
+.mode-toggle-btn .mode-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.mode-toggle-btn .mode-name {
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.mode-toggle-btn small {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+}
+
+.mode-toggle-btn:hover {
+    background: rgba(0, 255, 255, 0.1);
+    border-color: rgba(0, 255, 255, 0.5);
+}
+
+.mode-toggle-btn.active {
+    background: rgba(0, 255, 255, 0.2);
+    border-color: var(--biomech-cyan);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+.mode-toggle-btn.active i {
+    color: var(--biomech-cyan);
+}
+
+.mode-toggle-btn.active .mode-name {
+    color: var(--biomech-cyan);
+}
+
+.mode-description {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.mode-description i {
+    color: var(--biomech-cyan);
+    margin-top: 2px;
 }
 
 /* Preset Buttons */
