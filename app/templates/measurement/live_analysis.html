@@ -1773,7 +1773,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <!-- VPS Camera Handler para modo WebRTC -->
-<script src="{{ url_for('static', filename='js/vps_camera_handler.js') }}?v=1.2"></script>
+<script src="{{ url_for('static', filename='js/vps_camera_handler.js') }}?v=1.3"></script>
 
 <!-- Configuración del ejercicio -->
 <script>
@@ -1786,11 +1786,8 @@
         max_angle: {{ max_angle }},
         back_url: "{{ url_for('main.segment_exercises', segment_type=segment_type) }}"
     };
-    
-    // Variable global para el handler VPS
-    let vpsCamera = null;
 </script>
 
-<!-- Script principal de análisis - v3.6 con VPS camera integration -->
-<script src="{{ url_for('static', filename='js/live_analysis.js') }}?v=3.7"></script>
+<!-- Script principal de análisis -->
+<script src="{{ url_for('static', filename='js/live_analysis.js') }}?v=3.8"></script>
 {% endblock %}

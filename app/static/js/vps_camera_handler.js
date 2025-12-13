@@ -390,8 +390,6 @@ async function initVPSCameraIfNeeded() {
     }
 }
 
-// Auto-inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    // Esperar un momento para que el resto de la página cargue
-    setTimeout(initVPSCameraIfNeeded, 500);
-});
+// NO auto-inicializar - live_analysis.js maneja la inicialización
+// Esto evita doble inicialización y errores "Device in use"
+// La función initVPSCameraIfNeeded() es llamada desde live_analysis.js cuando es necesario
