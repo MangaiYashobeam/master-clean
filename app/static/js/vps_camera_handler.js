@@ -237,7 +237,16 @@ class VPSCameraHandler {
             // Mostrar en elemento
             const frame = this.canvasElement.toDataURL('image/jpeg', this.options.quality);
             this.videoElement.src = frame;
-            console.log('[VPSCamera] Primer frame mostrado');
+            this.videoElement.style.display = 'block'; // Asegurar que sea visible
+            console.log('[VPSCamera] Primer frame mostrado, src length:', frame.length);
+            console.log('[VPSCamera] Video element display:', this.videoElement.style.display);
+            console.log('[VPSCamera] Video element dimensions:', this.videoElement.width, 'x', this.videoElement.height);
+        } else {
+            console.error('[VPSCamera] No se puede mostrar frame:', {
+                hasVideoElement: !!this.videoElement,
+                videoWidth: this.captureVideo?.videoWidth,
+                videoHeight: this.captureVideo?.videoHeight
+            });
         }
     }
     
@@ -533,8 +542,11 @@ async function initVPSCameraIfNeeded() {
                     const processedImg = document.createElement('img');
                     processedImg.id = 'processedFrame';
                     processedImg.className = 'video-stream';
+                    // Copiar estilos pero asegurar que sea visible
                     processedImg.style.cssText = videoFeed.style.cssText;
+                    processedImg.style.display = 'block'; // Forzar visible
                     processedImg.alt = 'Video procesado';
+                    console.log('[VPSCamera] Creando elemento processedFrame con display:', processedImg.style.display);
                     videoFeed.parentElement.appendChild(processedImg);
                 }
             }
