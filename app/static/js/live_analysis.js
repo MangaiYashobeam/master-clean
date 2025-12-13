@@ -2403,8 +2403,27 @@ async function setCameraMode(mode) {
 
 /**
  * 🎥 Inicializa el VPS Camera Handler para captura WebRTC
+ * Usa el handler global de vps_camera_handler.js
  */
 async function initVPSCamera() {
+    // Si ya hay un handler global, no crear otro
+    if (window.vpsCameraHandler) {
+        console.log('[VPSCamera] Handler global ya existe, usando el existente');
+        return;
+    }
+    
+    // Si ya está en proceso de inicialización, esperar
+    if (window.vpsCameraInitializing) {
+        console.log('[VPSCamera] Inicialización en progreso, esperando...');
+        return;
+    }
+    
+    // Usar la función global de vps_camera_handler.js
+    if (typeof initVPSCameraIfNeeded === 'function') {
+        await initVPSCameraIfNeeded();
+        return;
+    }
+    
     console.log('[VPSCamera] Inicializando cámara WebRTC del cliente...');
     
     const videoWrapper = document.getElementById('videoWrapper');

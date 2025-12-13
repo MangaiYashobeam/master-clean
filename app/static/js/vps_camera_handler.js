@@ -332,11 +332,20 @@ class VPSCameraHandler {
 
 // Instancia global
 window.vpsCameraHandler = null;
+window.vpsCameraInitializing = false;  // Flag para evitar inicialización doble
 
 /**
  * Inicializa el handler de cámara VPS si estamos en modo VPS
  */
 async function initVPSCameraIfNeeded() {
+    // Evitar inicialización doble
+    if (window.vpsCameraHandler || window.vpsCameraInitializing) {
+        console.log('[VPSCamera] Ya inicializado o en proceso, saltando...');
+        return;
+    }
+    
+    window.vpsCameraInitializing = true;
+    
     try {
         // Verificar si estamos en modo VPS
         const response = await fetch('/api/camera/mode');
@@ -350,13 +359,15 @@ async function initVPSCameraIfNeeded() {
             if (videoFeed) {
                 videoFeed.style.display = 'none';
                 
-                // Crear elemento img para frames procesados
-                const processedImg = document.createElement('img');
-                processedImg.id = 'processedFrame';
-                processedImg.className = 'video-stream';
-                processedImg.style.cssText = videoFeed.style.cssText;
-                processedImg.alt = 'Video procesado';
-                videoFeed.parentElement.appendChild(processedImg);
+                // Crear elemento img para frames procesados si no existe
+                if (!document.getElementById('processedFrame')) {
+                    const processedImg = document.createElement('img');
+                    processedImg.id = 'processedFrame';
+                    processedImg.className = 'video-stream';
+                    processedImg.style.cssText = videoFeed.style.cssText;
+                    processedImg.alt = 'Video procesado';
+                    videoFeed.parentElement.appendChild(processedImg);
+                }
             }
             
             // Crear e iniciar handler
@@ -374,6 +385,8 @@ async function initVPSCameraIfNeeded() {
         }
     } catch (error) {
         console.warn('[VPSCamera] Error verificando modo:', error);
+    } finally {
+        window.vpsCameraInitializing = false;
     }
 }
 
