@@ -20,8 +20,9 @@ Fecha: 2025-11-14
 
 import cv2
 import threading
+import platform
 from contextlib import contextmanager
-from typing import Optional, Generator
+from typing import Optional, Generator, Union
 import logging
 
 # Configurar logging
@@ -69,7 +70,7 @@ class CameraManager:
     def acquire_camera(
         self, 
         user_id: str, 
-        camera_index: int = 0,
+        camera_index: Union[int, str] = 0,
         width: int = 1280,
         height: int = 720
     ) -> Generator[cv2.VideoCapture, None, None]:
@@ -112,9 +113,20 @@ class CameraManager:
             t1 = time_mod.time()
             print(f"   📹 Check in_use: {t1-t_start:.2f}s")
             
-            # Intentar abrir la cámara con backend específico para Windows
-            print(f"   📹 Abriendo VideoCapture(index={camera_index})...")
-            self._camera = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)  # DirectShow es más rápido en Windows
+            # Seleccionar backend según plataforma (DSHOW en Windows, V4L2 en Linux)
+            if platform.system().lower().startswith('win'):
+                backend = cv2.CAP_DSHOW
+            else:
+                backend = cv2.CAP_V4L2
+
+            print(f"   📹 Abriendo VideoCapture(source={camera_index}, backend={backend})...")
+            self._camera = cv2.VideoCapture(camera_index, backend)
+
+            # Fallback: si no abre, intentar backend por defecto
+            if not self._camera.isOpened():
+                print("   ⚠️ Backend específico falló, intentando CAP_ANY...")
+                self._camera.release()
+                self._camera = cv2.VideoCapture(camera_index)
             
             t2 = time_mod.time()
             print(f"   📹 VideoCapture() completado: {t2-t1:.2f}s")
@@ -129,7 +141,7 @@ class CameraManager:
             print(f"   📹 isOpened check: {t3-t2:.2f}s")
             
             # Optimizaciones de rendimiento para cámara
-            self._camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Buffer mínimo = menos latencia
+            self._camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Buffer mínimo = menos latencia (si está soportado)
             
             # Configurar resolución
             self._camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)

@@ -838,7 +838,15 @@ def video_feed():
     user_id = session.get('user_id')
     
     # Obtener configuración de cámara desde session (con defaults de config)
-    camera_session_index = request.args.get('camera', session.get('camera_index', current_app.config.get('CAMERA_INDEX', 0)), type=int)
+    # Soporte para cámaras RTSP/HTTP (string) o índice entero
+    camera_param = request.args.get('camera', None)
+    if camera_param is None:
+        camera_param = session.get('camera_index', current_app.config.get('CAMERA_INDEX', 0))
+
+    try:
+        camera_session_index = int(camera_param)
+    except (TypeError, ValueError):
+        camera_session_index = camera_param  # Puede ser URL/rtsp
     jpeg_quality = session.get('jpeg_quality', current_app.config.get('JPEG_QUALITY', 60))
     processing_width = session.get('processing_width', current_app.config.get('CAMERA_PROCESSING_WIDTH', 960))
     processing_height = session.get('processing_height', current_app.config.get('CAMERA_PROCESSING_HEIGHT', 540))
