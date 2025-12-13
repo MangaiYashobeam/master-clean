@@ -70,7 +70,7 @@ def get_cached_analyzer(analyzer_type: str, analyzer_class):
         _ANALYZER_CACHE[analyzer_type] = analyzer_class(
             processing_width=640,
             processing_height=480,
-            show_skeleton=False
+            show_skeleton=True  # ✅ Mostrar skeleton en VPS mode
         )
         
         elapsed = time.time() - start_time
