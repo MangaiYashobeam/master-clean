@@ -892,6 +892,133 @@ def camera_mode():
         }), 500
 
 
+@api_bp.route('/camera/process_frame', methods=['POST'])
+@login_required
+def process_client_frame():
+    """
+    Procesa un frame enviado desde el cliente (modo VPS)
+    
+    Este endpoint recibe frames capturados por WebRTC del navegador del cliente,
+    los procesa con MediaPipe, y retorna el frame con las anotaciones.
+    
+    Body JSON:
+        frame: str - Frame en formato Base64 (data:image/jpeg;base64,...)
+        exercise_type: str - Tipo de ejercicio activo (opcional)
+    
+    Returns:
+        JSON con frame procesado en Base64 y datos de análisis
+    """
+    import base64
+    from app.analyzers import (
+        ShoulderProfileAnalyzer, ShoulderFrontalAnalyzer, 
+        ElbowProfileAnalyzer,
+        HipProfileAnalyzer, HipFrontalAnalyzer,
+        KneeProfileAnalyzer,
+        AnkleProfileAnalyzer
+    )
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'frame' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'No se recibió frame'
+            }), 400
+        
+        # Decodificar frame Base64
+        frame_data = data['frame']
+        
+        # Remover prefijo data:image si existe
+        if ',' in frame_data:
+            frame_data = frame_data.split(',')[1]
+        
+        # Decodificar Base64 a bytes
+        frame_bytes = base64.b64decode(frame_data)
+        
+        # Convertir a numpy array
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo decodificar el frame'
+            }), 400
+        
+        # Obtener tipo de ejercicio de la sesión o del request
+        exercise_type = data.get('exercise_type') or session.get('exercise_type', 'shoulder_profile')
+        
+        # Mapeo de ejercicios a analyzers
+        ANALYZER_MAP = {
+            'shoulder_profile': ShoulderProfileAnalyzer,
+            'shoulder_frontal': ShoulderFrontalAnalyzer,
+            'elbow_profile': ElbowProfileAnalyzer,
+            'hip_profile': HipProfileAnalyzer,
+            'hip_frontal': HipFrontalAnalyzer,
+            'knee_profile': KneeProfileAnalyzer,
+            'ankle_profile': AnkleProfileAnalyzer
+        }
+        
+        analyzer_class = ANALYZER_MAP.get(exercise_type)
+        
+        if not analyzer_class:
+            return jsonify({
+                'success': False,
+                'error': f'Tipo de ejercicio no soportado: {exercise_type}'
+            }), 400
+        
+        # Obtener o crear analyzer cacheado
+        analyzer = get_cached_analyzer(exercise_type, analyzer_class)
+        
+        # Procesar frame con MediaPipe
+        processed_frame, analysis_data = analyzer.process_frame(frame)
+        
+        # Codificar frame procesado a JPEG
+        jpeg_quality = session.get('jpeg_quality', 50)  # Calidad reducida para VPS
+        ret, buffer = cv2.imencode('.jpg', processed_frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
+        
+        if not ret:
+            return jsonify({
+                'success': False,
+                'error': 'Error al codificar frame procesado'
+            }), 500
+        
+        # Convertir a Base64
+        processed_base64 = base64.b64encode(buffer).decode('utf-8')
+        
+        # Preparar respuesta con datos del análisis
+        response_data = {
+            'success': True,
+            'frame': f'data:image/jpeg;base64,{processed_base64}',
+            'analysis': {
+                'exercise_type': exercise_type,
+                'timestamp': time.time()
+            }
+        }
+        
+        # Agregar datos de análisis si existen
+        if analysis_data:
+            if hasattr(analysis_data, '__dict__'):
+                # Si es un objeto, convertir a dict
+                response_data['analysis'].update(vars(analysis_data))
+            elif isinstance(analysis_data, dict):
+                response_data['analysis'].update(analysis_data)
+            elif isinstance(analysis_data, (int, float)):
+                response_data['analysis']['angle'] = analysis_data
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        logger.error(f"Error procesando frame del cliente: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 # ============================================================================
 # VIDEO STREAMING Y ANÁLISIS EN VIVO (NUEVO)
 # ============================================================================

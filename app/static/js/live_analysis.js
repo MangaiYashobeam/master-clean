@@ -1741,7 +1741,7 @@ class LiveAnalysisController {
 
 let liveAnalysisController = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('[LiveAnalysis] DOM cargado - Inicializando controller');
     
     // Verificar que existe la configuración
@@ -1753,6 +1753,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Crear controller
     liveAnalysisController = new LiveAnalysisController(EXERCISE_CONFIG);
+    
+    // Cargar modo de cámara e inicializar VPS si es necesario
+    await loadCameraMode(true);  // true = inicializar cámara si es modo VPS
     
     console.log('[LiveAnalysis] Sistema listo');
 });
@@ -2300,6 +2303,7 @@ document.addEventListener('keydown', (e) => {
 let cameraConfigModal = null;
 let originalCameraConfig = null;  // Guardar config original al abrir modal
 let currentCameraMode = 'localhost';  // Modo actual: 'localhost' o 'vps'
+let vpsCamera = null;  // Instancia del VPS Camera Handler
 
 /**
  * 🌐 Establece el modo de cámara (LocalHost o VPS)
@@ -2307,6 +2311,7 @@ let currentCameraMode = 'localhost';  // Modo actual: 'localhost' o 'vps'
  */
 async function setCameraMode(mode) {
     console.log(`[CameraMode] Cambiando a modo: ${mode}`);
+    const previousMode = currentCameraMode;
     currentCameraMode = mode;
     
     // Actualizar UI de botones
@@ -2315,6 +2320,7 @@ async function setCameraMode(mode) {
     const modeDescText = document.getElementById('modeDescriptionText');
     const cameraSelectSection = document.getElementById('cameraSelectSection');
     const resolutionSelect = document.getElementById('resolutionSelect');
+    const videoFeed = document.getElementById('videoFeed');
     
     // Remover active de ambos botones
     btnLocalhost?.classList.remove('btn-info', 'active');
@@ -2336,6 +2342,20 @@ async function setCameraMode(mode) {
         
         // Resolución recomendada para localhost
         if (resolutionSelect) resolutionSelect.value = '960x540';
+        
+        // Detener VPS camera si estaba activo
+        if (vpsCamera) {
+            console.log('[CameraMode] Deteniendo VPS camera...');
+            vpsCamera.stopCapture();
+            vpsCamera = null;
+        }
+        
+        // Restaurar video feed MJPEG del servidor
+        if (videoFeed) {
+            const cameraIndex = videoFeed.dataset.cameraIndex || 0;
+            videoFeed.src = `/api/video_feed?camera=${cameraIndex}&t=${Date.now()}`;
+            videoFeed.style.display = 'block';
+        }
         
     } else if (mode === 'vps') {
         btnVps?.classList.remove('btn-outline-success');
@@ -2359,6 +2379,9 @@ async function setCameraMode(mode) {
             slider.value = 50;
             valueDisplay.textContent = '50';
         }
+        
+        // Inicializar VPS camera handler si no existe
+        await initVPSCamera();
     }
     
     // Guardar el modo en el servidor
@@ -2379,9 +2402,111 @@ async function setCameraMode(mode) {
 }
 
 /**
- * Carga el modo de cámara actual del servidor
+ * 🎥 Inicializa el VPS Camera Handler para captura WebRTC
  */
-async function loadCameraMode() {
+async function initVPSCamera() {
+    console.log('[VPSCamera] Inicializando cámara WebRTC del cliente...');
+    
+    const videoWrapper = document.getElementById('videoWrapper');
+    const videoFeed = document.getElementById('videoFeed');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    
+    // Mostrar overlay de carga
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+        if (loadingText) loadingText.textContent = 'Solicitando acceso a cámara del navegador...';
+    }
+    
+    try {
+        // Verificar si VPSCameraHandler está disponible
+        if (typeof VPSCameraHandler === 'undefined') {
+            throw new Error('VPSCameraHandler no está cargado. Recarga la página.');
+        }
+        
+        // Crear instancia si no existe
+        if (!vpsCamera) {
+            vpsCamera = new VPSCameraHandler({
+                serverUrl: '/api/camera/process_frame',
+                frameInterval: 100,  // 10 FPS
+                jpegQuality: 0.5,
+                width: 640,
+                height: 480,
+                onFrame: (frameData) => {
+                    // Actualizar la imagen con el frame procesado
+                    if (videoFeed && frameData.frame) {
+                        videoFeed.src = frameData.frame;
+                    }
+                    
+                    // Actualizar datos de análisis si hay
+                    if (frameData.analysis) {
+                        updateAnalysisUI(frameData.analysis);
+                    }
+                },
+                onError: (error) => {
+                    console.error('[VPSCamera] Error:', error);
+                    showToast(`Error de cámara: ${error}`, 'danger');
+                },
+                onStatusChange: (status) => {
+                    console.log(`[VPSCamera] Estado: ${status}`);
+                    if (status === 'capturing') {
+                        if (loadingOverlay) loadingOverlay.style.display = 'none';
+                    }
+                }
+            });
+        }
+        
+        // Inicializar y empezar captura
+        await vpsCamera.init(videoWrapper);
+        
+        // Listar cámaras disponibles
+        const cameras = await vpsCamera.listCameras();
+        console.log('[VPSCamera] Cámaras disponibles:', cameras);
+        
+        // Empezar captura
+        await vpsCamera.startCapture();
+        
+        // Ocultar overlay
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        
+        console.log('[VPSCamera] Captura iniciada exitosamente');
+        showToast('Cámara del navegador activada', 'success');
+        
+    } catch (error) {
+        console.error('[VPSCamera] Error al inicializar:', error);
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        
+        // Mostrar error al usuario
+        showToast(`Error al acceder a la cámara: ${error.message}`, 'danger');
+        
+        // Volver a modo localhost si falla
+        console.log('[VPSCamera] Volviendo a modo localhost...');
+        currentCameraMode = 'localhost';
+        setCameraMode('localhost');
+    }
+}
+
+/**
+ * Actualiza la UI con los datos del análisis
+ * @param {Object} analysis - Datos del análisis
+ */
+function updateAnalysisUI(analysis) {
+    // Actualizar ángulo si existe
+    if (analysis.angle !== undefined) {
+        const angleDisplay = document.getElementById('currentAngleDisplay');
+        if (angleDisplay) {
+            angleDisplay.textContent = Math.round(analysis.angle) + '°';
+        }
+    }
+    
+    // Se pueden agregar más actualizaciones de UI aquí
+}
+
+/**
+ * Carga el modo de cámara actual del servidor
+ * @param {boolean} initCamera - Si debe inicializar la cámara VPS automáticamente
+ */
+async function loadCameraMode(initCamera = false) {
     try {
         const response = await fetch('/api/camera/mode');
         const data = await response.json();
@@ -2391,13 +2516,22 @@ async function loadCameraMode() {
             // Actualizar UI sin llamar al servidor de nuevo
             const btnLocalhost = document.getElementById('btnModeLocalhost');
             const btnVps = document.getElementById('btnModeVps');
+            const cameraSelectSection = document.getElementById('cameraSelectSection');
             
             if (currentCameraMode === 'localhost') {
                 btnLocalhost?.classList.remove('btn-outline-info');
                 btnLocalhost?.classList.add('btn-info', 'active');
+                if (cameraSelectSection) cameraSelectSection.style.display = 'block';
             } else if (currentCameraMode === 'vps') {
                 btnVps?.classList.remove('btn-outline-success');
                 btnVps?.classList.add('btn-success', 'active');
+                if (cameraSelectSection) cameraSelectSection.style.display = 'none';
+                
+                // Inicializar cámara VPS si se solicita
+                if (initCamera && !vpsCamera) {
+                    console.log('[CameraMode] Modo VPS detectado, inicializando cámara del navegador...');
+                    await initVPSCamera();
+                }
             }
             
             console.log(`[CameraMode] Modo cargado: ${currentCameraMode}`);
