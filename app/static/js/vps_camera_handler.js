@@ -545,6 +545,10 @@ async function initVPSCameraIfNeeded() {
                     // Copiar estilos pero asegurar que sea visible
                     processedImg.style.cssText = videoFeed.style.cssText;
                     processedImg.style.display = 'block'; // Forzar visible
+                    processedImg.style.width = '100%';
+                    processedImg.style.height = 'auto';
+                    processedImg.style.objectFit = 'contain';
+                    processedImg.style.backgroundColor = '#000';
                     processedImg.alt = 'Video procesado';
                     console.log('[VPSCamera] Creando elemento processedFrame con display:', processedImg.style.display);
                     videoFeed.parentElement.appendChild(processedImg);
