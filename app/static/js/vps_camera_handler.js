@@ -11,15 +11,19 @@
  * 4. Servidor procesa con MediaPipe y retorna frame procesado
  * 5. Frame procesado se muestra en el cliente
  * 
- * VERSION: 2.0
+ * VERSION: 2.2
  * - Agregado: Logging detallado para debugging
  * - Agregado: exercise_type en payload
  * - Agregado: Manejo de errores mejorado
  * - Agregado: Modo test sin MediaPipe
+ * - Agregado: Log de primer frame enviado
  * 
  * Autor: BIOTRACK Team
  * Fecha: 2025-12-14
  */
+
+// ⚠️ VERSION MARKER - Si no ves este log, el archivo no se actualizó
+console.log('🔵 VPS_CAMERA_HANDLER VERSION 2.2 LOADED');
 
 class VPSCameraHandler {
     constructor(options = {}) {
@@ -46,7 +50,7 @@ class VPSCameraHandler {
         this.consecutiveErrors = 0;  // Contador de errores consecutivos
         this.maxConsecutiveErrors = 5;  // Máximo antes de reintentar
         
-        console.log('[VPSCamera] Constructor - v2.0 inicializado');
+        console.log('[VPSCamera] Constructor - v2.2 inicializado');
         
         // Crear elementos necesarios
         this._createElements();
@@ -290,6 +294,11 @@ class VPSCameraHandler {
     async _captureLoop() {
         if (!this.isRunning) return;
         
+        // Log inicial del bucle de captura
+        if (this.frameCount === 0) {
+            console.log('[VPSCamera] 🔄 Iniciando bucle de captura de frames...');
+        }
+        
         const now = performance.now();
         const elapsed = now - this.lastFrameTime;
         const frameInterval = 1000 / this.options.targetFPS;
@@ -338,8 +347,10 @@ class VPSCameraHandler {
             const exerciseType = window.liveAnalysisController?.currentExercise?.type || 'shoulder_profile';
             
             // Log solo cada 60 frames (cada ~6 segundos a 10fps)
-            if (this.frameCount % 60 === 0) {
-                console.log('[VPSCamera] Enviando frame', this.frameCount, 'para ejercicio:', exerciseType);
+            if (this.frameCount === 0) {
+                console.log('[VPSCamera] 📤 Enviando PRIMER frame al servidor...');
+            } else if (this.frameCount % 60 === 0) {
+                console.log('[VPSCamera] 📤 Enviando frame', this.frameCount, 'para ejercicio:', exerciseType);
             }
             
             const response = await fetch(this.options.processEndpoint, {
