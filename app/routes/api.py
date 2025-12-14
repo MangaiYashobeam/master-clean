@@ -892,6 +892,51 @@ def camera_mode():
         }), 500
 
 
+@api_bp.route('/camera/test_frame', methods=['POST'])
+@login_required
+def test_client_frame():
+    """
+    Endpoint de prueba para verificar que el servidor puede recibir y decodificar frames
+    Sin procesamiento MediaPipe - solo echo del frame
+    """
+    import base64
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'frame' not in data:
+            return jsonify({'success': False, 'error': 'No frame'}), 400
+        
+        # Decodificar frame Base64
+        frame_data = data['frame']
+        if ',' in frame_data:
+            frame_data = frame_data.split(',')[1]
+        
+        frame_bytes = base64.b64decode(frame_data)
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return jsonify({'success': False, 'error': 'Decode failed'}), 400
+        
+        # Re-codificar y devolver (sin MediaPipe)
+        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        if ret:
+            echo_base64 = base64.b64encode(buffer).decode('utf-8')
+            return jsonify({
+                'success': True,
+                'frame': f'data:image/jpeg;base64,{echo_base64}',
+                'shape': frame.shape,
+                'test': 'echo_ok'
+            }), 200
+        
+        return jsonify({'success': False, 'error': 'Encode failed'}), 500
+        
+    except Exception as e:
+        logger.error(f"[TEST] Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/camera/process_frame', methods=['POST'])
 @login_required
 def process_client_frame():
@@ -917,8 +962,11 @@ def process_client_frame():
         AnkleProfileAnalyzer
     )
     
+    logger.info("[VPS] 📥 Recibiendo frame para procesamiento...")
+    
     try:
         data = request.get_json()
+        logger.info(f"[VPS] Datos recibidos: frame_size={len(data.get('frame', '')) if data else 0}, exercise_type={data.get('exercise_type') if data else 'N/A'}")
         
         if not data or 'frame' not in data:
             return jsonify({
@@ -981,9 +1029,11 @@ def process_client_frame():
         
         # Obtener o crear analyzer cacheado
         try:
+            logger.info(f"[VPS] Obteniendo analyzer para tipo: {exercise_type}")
             analyzer = get_cached_analyzer(exercise_type, analyzer_class)
+            logger.info(f"[VPS] ✅ Analyzer obtenido: {type(analyzer).__name__}")
         except Exception as analyzer_error:
-            logger.error(f"Error creando analyzer: {analyzer_error}")
+            logger.error(f"[VPS] ❌ Error creando analyzer: {analyzer_error}")
             # Devolver frame sin procesar si falla el analyzer
             jpeg_quality = session.get('jpeg_quality', 50)
             ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
@@ -998,9 +1048,13 @@ def process_client_frame():
         
         # Procesar frame con MediaPipe
         try:
+            logger.info(f"[VPS] Procesando frame con MediaPipe (shape: {frame.shape})...")
             result = analyzer.process_frame(frame)
+            logger.info(f"[VPS] ✅ MediaPipe procesó el frame exitosamente")
         except Exception as process_error:
-            logger.error(f"Error en process_frame: {process_error}")
+            logger.error(f"[VPS] ❌ Error en process_frame: {process_error}")
+            import traceback
+            logger.error(f"[VPS] Traceback process_frame:\n{traceback.format_exc()}")
             # Devolver frame sin procesar si falla el procesamiento
             jpeg_quality = session.get('jpeg_quality', 50)
             ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
@@ -1063,15 +1117,20 @@ def process_client_frame():
             elif isinstance(analysis_data, (int, float)):
                 response_data['analysis']['angle'] = analysis_data
         
+        logger.info(f"[VPS] ✅ Frame procesado exitosamente, retornando resultado")
         return jsonify(response_data), 200
         
     except Exception as e:
-        logger.error(f"Error procesando frame del cliente: {e}")
+        logger.error(f"[VPS] ❌ Error procesando frame del cliente: {e}")
         import traceback
-        traceback.print_exc()
+        error_traceback = traceback.format_exc()
+        logger.error(f"[VPS] Traceback completo:\n{error_traceback}")
+        
+        # Retornar error detallado pero no exponer detalles internos al cliente
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f'Error en servidor: {type(e).__name__}',
+            'message': str(e)[:200]  # Limitar longitud del mensaje
         }), 500
 
 

@@ -7,12 +7,18 @@
  * FLUJO:
  * 1. getUserMedia() obtiene stream de la cámara del cliente
  * 2. Canvas captura frames del video
- * 3. Frames se envían al servidor via WebSocket o HTTP POST
+ * 3. Frames se envían al servidor via HTTP POST
  * 4. Servidor procesa con MediaPipe y retorna frame procesado
  * 5. Frame procesado se muestra en el cliente
  * 
+ * VERSION: 2.0
+ * - Agregado: Logging detallado para debugging
+ * - Agregado: exercise_type en payload
+ * - Agregado: Manejo de errores mejorado
+ * - Agregado: Modo test sin MediaPipe
+ * 
  * Autor: BIOTRACK Team
- * Fecha: 2025-12-13
+ * Fecha: 2025-12-14
  */
 
 class VPSCameraHandler {
@@ -25,6 +31,7 @@ class VPSCameraHandler {
             videoElementId: options.videoElementId || 'videoFeed',
             canvasElementId: options.canvasElementId || 'captureCanvas',
             processEndpoint: options.processEndpoint || '/api/camera/process_frame',
+            testMode: options.testMode || false,  // Modo test sin MediaPipe
             ...options
         };
         
@@ -36,6 +43,10 @@ class VPSCameraHandler {
         this.frameCount = 0;
         this.lastFrameTime = 0;
         this.processingFrame = false;
+        this.consecutiveErrors = 0;  // Contador de errores consecutivos
+        this.maxConsecutiveErrors = 5;  // Máximo antes de reintentar
+        
+        console.log('[VPSCamera] Constructor - v2.0 inicializado');
         
         // Crear elementos necesarios
         this._createElements();
@@ -349,7 +360,11 @@ class VPSCameraHandler {
                 // Log de éxito solo la primera vez
                 if (!this._hasProcessedFrame) {
                     console.log('[VPSCamera] ✅ Primer frame procesado con MediaPipe recibido');
+                    console.log('[VPSCamera] Análisis data:', data.analysis);
                 }
+                
+                // Resetear contador de errores en caso de éxito
+                this.consecutiveErrors = 0;
                 
                 // El API retorna 'frame' no 'processed_frame'
                 if (data.success && data.frame) {
@@ -365,27 +380,38 @@ class VPSCameraHandler {
                     window.liveAnalysisController.updateFromVPSData(data.analysis);
                 }
             } else {
+                this.consecutiveErrors++;
+                
                 // Si el servidor falla, mostrar frame raw
                 if (this.videoElement) {
                     this.videoElement.src = rawFrame;
                 }
+                
                 // Log error ocasionalmente
-                if (this.frameCount % 30 === 0) {
-                    console.error(`[VPSCamera] ❌ Server error ${response.status}`);
+                if (this.frameCount % 30 === 0 || this.consecutiveErrors === 1) {
+                    console.error(`[VPSCamera] ❌ Server error ${response.status} (${this.consecutiveErrors} consecutivos)`);
                     // Intentar leer el mensaje de error
                     response.text().then(text => {
-                        console.error('[VPSCamera] Error response:', text.substring(0, 200));
+                        console.error('[VPSCamera] Error response:', text.substring(0, 500));
                     }).catch(() => {});
+                }
+                
+                // Si hay muchos errores consecutivos, intentar reiniciar
+                if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+                    console.warn('[VPSCamera] Demasiados errores consecutivos, modo solo cámara activado');
+                    // Continuar mostrando cámara sin procesar
                 }
             }
         } catch (error) {
+            this.consecutiveErrors++;
+            
             // Si hay error de red, mostrar frame raw
             if (this.videoElement) {
                 this.videoElement.src = rawFrame;
             }
             // Solo loguear errores ocasionalmente para no saturar la consola
-            if (this.frameCount % 30 === 0) {
-                console.error('[VPSCamera] ❌ Error enviando frame:', error.message);
+            if (this.frameCount % 30 === 0 || this.consecutiveErrors === 1) {
+                console.error(`[VPSCamera] ❌ Error enviando frame (${this.consecutiveErrors} consecutivos):`, error.message);
             }
         }
     }
