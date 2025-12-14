@@ -323,6 +323,14 @@ class VPSCameraHandler {
         
         // Enviar al servidor para procesamiento
         try {
+            // Obtener exercise_type del controller si existe
+            const exerciseType = window.liveAnalysisController?.currentExercise?.type || 'shoulder_profile';
+            
+            // Log solo cada 60 frames (cada ~6 segundos a 10fps)
+            if (this.frameCount % 60 === 0) {
+                console.log('[VPSCamera] Enviando frame', this.frameCount, 'para ejercicio:', exerciseType);
+            }
+            
             const response = await fetch(this.options.processEndpoint, {
                 method: 'POST',
                 headers: {
@@ -330,12 +338,18 @@ class VPSCameraHandler {
                 },
                 body: JSON.stringify({
                     frame: rawFrame,
-                    frame_number: this.frameCount
+                    frame_number: this.frameCount,
+                    exercise_type: exerciseType
                 })
             });
             
             if (response.ok) {
                 const data = await response.json();
+                
+                // Log de éxito solo la primera vez
+                if (!this._hasProcessedFrame) {
+                    console.log('[VPSCamera] ✅ Primer frame procesado con MediaPipe recibido');
+                }
                 
                 // El API retorna 'frame' no 'processed_frame'
                 if (data.success && data.frame) {
@@ -357,7 +371,11 @@ class VPSCameraHandler {
                 }
                 // Log error ocasionalmente
                 if (this.frameCount % 30 === 0) {
-                    console.warn(`[VPSCamera] Server error ${response.status}`);
+                    console.error(`[VPSCamera] ❌ Server error ${response.status}`);
+                    // Intentar leer el mensaje de error
+                    response.text().then(text => {
+                        console.error('[VPSCamera] Error response:', text.substring(0, 200));
+                    }).catch(() => {});
                 }
             }
         } catch (error) {
@@ -367,7 +385,7 @@ class VPSCameraHandler {
             }
             // Solo loguear errores ocasionalmente para no saturar la consola
             if (this.frameCount % 30 === 0) {
-                console.warn('[VPSCamera] Error enviando frame:', error.message);
+                console.error('[VPSCamera] ❌ Error enviando frame:', error.message);
             }
         }
     }
