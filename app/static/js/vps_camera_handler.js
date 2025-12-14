@@ -11,19 +11,20 @@
  * 4. Servidor procesa con MediaPipe y retorna frame procesado
  * 5. Frame procesado se muestra en el cliente
  * 
- * VERSION: 2.2
+ * VERSION: 2.3
  * - Agregado: Logging detallado para debugging
  * - Agregado: exercise_type en payload
  * - Agregado: Manejo de errores mejorado
  * - Agregado: Modo test sin MediaPipe
  * - Agregado: Log de primer frame enviado
+ * - Agregado: _updateAnalysisUI para actualizar UI directamente
  * 
  * Autor: BIOTRACK Team
  * Fecha: 2025-12-14
  */
 
 // ⚠️ VERSION MARKER - Si no ves este log, el archivo no se actualizó
-console.log('🔵 VPS_CAMERA_HANDLER VERSION 2.2 LOADED');
+console.log('🔵 VPS_CAMERA_HANDLER VERSION 2.3 LOADED');
 
 class VPSCameraHandler {
     constructor(options = {}) {
@@ -50,7 +51,7 @@ class VPSCameraHandler {
         this.consecutiveErrors = 0;  // Contador de errores consecutivos
         this.maxConsecutiveErrors = 5;  // Máximo antes de reintentar
         
-        console.log('[VPSCamera] Constructor - v2.2 inicializado');
+        console.log('[VPSCamera] Constructor - v2.3 inicializado');
         
         // Crear elementos necesarios
         this._createElements();
@@ -387,8 +388,14 @@ class VPSCameraHandler {
                 }
                 
                 // Actualizar datos de análisis si existen
-                if (data.analysis && window.liveAnalysisController) {
-                    window.liveAnalysisController.updateFromVPSData(data.analysis);
+                if (data.analysis) {
+                    // Intentar actualizar via controller
+                    if (window.liveAnalysisController && typeof window.liveAnalysisController.updateFromVPSData === 'function') {
+                        window.liveAnalysisController.updateFromVPSData(data.analysis);
+                    }
+                    
+                    // También actualizar UI directamente como respaldo
+                    this._updateAnalysisUI(data.analysis);
                 }
             } else {
                 this.consecutiveErrors++;
@@ -463,6 +470,62 @@ class VPSCameraHandler {
                 indicator.style.opacity = '0';
                 setTimeout(() => indicator.remove(), 500);
             }, 5000);
+        }
+    }
+    
+    /**
+     * Actualiza la UI de análisis directamente desde los datos del servidor
+     * Esta es una actualización directa como respaldo al controller
+     */
+    _updateAnalysisUI(analysis) {
+        try {
+            // Actualizar ángulo actual
+            const angleElement = document.getElementById('currentAngle');
+            if (angleElement && analysis.angle !== undefined) {
+                angleElement.textContent = `${analysis.angle.toFixed(1)}°`;
+            }
+            
+            // Actualizar min/max
+            const minAngleElement = document.getElementById('minAngle');
+            if (minAngleElement && analysis.min_angle !== undefined) {
+                minAngleElement.textContent = `${analysis.min_angle.toFixed(1)}°`;
+            }
+            
+            const maxAngleElement = document.getElementById('maxAngle');
+            if (maxAngleElement && analysis.max_angle !== undefined) {
+                maxAngleElement.textContent = `${analysis.max_angle.toFixed(1)}°`;
+            }
+            
+            // Actualizar ROM
+            const romElement = document.getElementById('romValue') || document.getElementById('currentROM');
+            if (romElement && analysis.rom !== undefined) {
+                romElement.textContent = `${analysis.rom.toFixed(1)}°`;
+            }
+            
+            // Actualizar indicador de detección
+            const detectionBadge = document.getElementById('detectionStatus');
+            if (detectionBadge) {
+                if (analysis.landmarks_detected) {
+                    detectionBadge.className = 'badge bg-success';
+                    detectionBadge.textContent = 'Persona detectada';
+                } else {
+                    detectionBadge.className = 'badge bg-warning';
+                    detectionBadge.textContent = 'Buscando...';
+                }
+            }
+            
+            // Actualizar barra de progreso visual si existe
+            const progressBar = document.getElementById('romProgressBar');
+            if (progressBar && analysis.angle !== undefined) {
+                // Normalizar el ángulo a un porcentaje (0-180 grados)
+                const percentage = Math.min(100, (analysis.angle / 180) * 100);
+                progressBar.style.width = `${percentage}%`;
+                progressBar.setAttribute('aria-valuenow', percentage);
+            }
+            
+        } catch (error) {
+            // No es crítico si falla la actualización UI
+            console.warn('[VPSCamera] Error actualizando UI:', error);
         }
     }
     

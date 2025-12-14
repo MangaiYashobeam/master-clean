@@ -943,8 +943,10 @@ def process_client_frame():
     """
     Procesa un frame enviado desde el cliente (modo VPS)
     
-    Este endpoint recibe frames capturados por WebRTC del navegador del cliente,
-    los procesa con MediaPipe, y retorna el frame con las anotaciones.
+    NUEVA IMPLEMENTACIÓN: Usa VPSMediaPipeEngine dedicado que:
+    - SIEMPRE dibuja el skeleton
+    - Calcula ángulos según el ejercicio
+    - Retorna datos de análisis completos
     
     Body JSON:
         frame: str - Frame en formato Base64 (data:image/jpeg;base64,...)
@@ -954,19 +956,10 @@ def process_client_frame():
         JSON con frame procesado en Base64 y datos de análisis
     """
     import base64
-    from app.analyzers import (
-        ShoulderProfileAnalyzer, ShoulderFrontalAnalyzer, 
-        ElbowProfileAnalyzer,
-        HipProfileAnalyzer, HipFrontalAnalyzer,
-        KneeProfileAnalyzer,
-        AnkleProfileAnalyzer
-    )
-    
-    logger.info("[VPS] 📥 Recibiendo frame para procesamiento...")
+    from app.core.vps_mediapipe_engine import get_vps_engine
     
     try:
         data = request.get_json()
-        logger.info(f"[VPS] Datos recibidos: frame_size={len(data.get('frame', '')) if data else 0}, exercise_type={data.get('exercise_type') if data else 'N/A'}")
         
         if not data or 'frame' not in data:
             return jsonify({
@@ -994,98 +987,17 @@ def process_client_frame():
                 'error': 'No se pudo decodificar el frame'
             }), 400
         
-        # Obtener tipo de ejercicio de la sesión o del request
+        # Obtener tipo de ejercicio
         exercise_type = data.get('exercise_type') or session.get('exercise_type', 'shoulder_profile')
         
-        # Mapeo de ejercicios a analyzers
-        ANALYZER_MAP = {
-            'shoulder_profile': ShoulderProfileAnalyzer,
-            'shoulder_frontal': ShoulderFrontalAnalyzer,
-            'elbow_profile': ElbowProfileAnalyzer,
-            'hip_profile': HipProfileAnalyzer,
-            'hip_frontal': HipFrontalAnalyzer,
-            'knee_profile': KneeProfileAnalyzer,
-            'ankle_profile': AnkleProfileAnalyzer
-        }
+        # Obtener el engine VPS (singleton)
+        vps_engine = get_vps_engine()
         
-        analyzer_class = ANALYZER_MAP.get(exercise_type)
-        
-        if not analyzer_class:
-            # Si no hay analyzer, devolver el frame sin procesar
-            logger.warning(f"Tipo de ejercicio no soportado: {exercise_type}, devolviendo frame sin procesar")
-            jpeg_quality = session.get('jpeg_quality', 50)
-            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
-            if ret:
-                processed_base64 = base64.b64encode(buffer).decode('utf-8')
-                return jsonify({
-                    'success': True,
-                    'frame': f'data:image/jpeg;base64,{processed_base64}',
-                    'analysis': {'exercise_type': exercise_type, 'error': 'Tipo no soportado'}
-                }), 200
-            return jsonify({
-                'success': False,
-                'error': f'Tipo de ejercicio no soportado: {exercise_type}'
-            }), 400
-        
-        # Obtener o crear analyzer cacheado
-        try:
-            logger.info(f"[VPS] Obteniendo analyzer para tipo: {exercise_type}")
-            analyzer = get_cached_analyzer(exercise_type, analyzer_class)
-            logger.info(f"[VPS] ✅ Analyzer obtenido: {type(analyzer).__name__}")
-        except Exception as analyzer_error:
-            logger.error(f"[VPS] ❌ Error creando analyzer: {analyzer_error}")
-            # Devolver frame sin procesar si falla el analyzer
-            jpeg_quality = session.get('jpeg_quality', 50)
-            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
-            if ret:
-                processed_base64 = base64.b64encode(buffer).decode('utf-8')
-                return jsonify({
-                    'success': True,
-                    'frame': f'data:image/jpeg;base64,{processed_base64}',
-                    'analysis': {'error': str(analyzer_error)}
-                }), 200
-            raise analyzer_error
-        
-        # Procesar frame con MediaPipe
-        try:
-            logger.info(f"[VPS] Procesando frame con MediaPipe (shape: {frame.shape})...")
-            result = analyzer.process_frame(frame)
-            logger.info(f"[VPS] ✅ MediaPipe procesó el frame exitosamente")
-        except Exception as process_error:
-            logger.error(f"[VPS] ❌ Error en process_frame: {process_error}")
-            import traceback
-            logger.error(f"[VPS] Traceback process_frame:\n{traceback.format_exc()}")
-            # Devolver frame sin procesar si falla el procesamiento
-            jpeg_quality = session.get('jpeg_quality', 50)
-            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
-            if ret:
-                processed_base64 = base64.b64encode(buffer).decode('utf-8')
-                return jsonify({
-                    'success': True,
-                    'frame': f'data:image/jpeg;base64,{processed_base64}',
-                    'analysis': {'error': str(process_error)}
-                }), 200
-            raise process_error
-        
-        # El analyzer puede retornar solo el frame o una tupla (frame, data)
-        if isinstance(result, tuple):
-            processed_frame, analysis_data = result
-        else:
-            processed_frame = result
-            # Obtener datos del analyzer directamente
-            analysis_data = {
-                'angle': getattr(analyzer, 'current_angle', None),
-                'min_angle': getattr(analyzer, 'min_angle', None),
-                'max_angle': getattr(analyzer, 'max_angle', None),
-                'side': getattr(analyzer, 'side', None),
-                'orientation': getattr(analyzer, 'orientation', None),
-                'landmarks_detected': getattr(analyzer, 'landmarks_detected', False),
-                'posture_valid': getattr(analyzer, 'posture_valid', False),
-                'confidence': getattr(analyzer, 'confidence', 0)
-            }
+        # Procesar frame con el engine dedicado
+        processed_frame, analysis_data = vps_engine.process_frame(frame, exercise_type)
         
         # Codificar frame procesado a JPEG
-        jpeg_quality = session.get('jpeg_quality', 50)  # Calidad reducida para VPS
+        jpeg_quality = session.get('jpeg_quality', 70)
         ret, buffer = cv2.imencode('.jpg', processed_frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
         
         if not ret:
@@ -1097,41 +1009,38 @@ def process_client_frame():
         # Convertir a Base64
         processed_base64 = base64.b64encode(buffer).decode('utf-8')
         
-        # Preparar respuesta con datos del análisis
+        # Preparar respuesta
         response_data = {
             'success': True,
             'frame': f'data:image/jpeg;base64,{processed_base64}',
-            'analysis': {
-                'exercise_type': exercise_type,
-                'timestamp': time.time()
-            }
+            'analysis': analysis_data
         }
         
-        # Agregar datos de análisis si existen
-        if analysis_data:
-            if hasattr(analysis_data, '__dict__'):
-                # Si es un objeto, convertir a dict
-                response_data['analysis'].update(vars(analysis_data))
-            elif isinstance(analysis_data, dict):
-                response_data['analysis'].update(analysis_data)
-            elif isinstance(analysis_data, (int, float)):
-                response_data['analysis']['angle'] = analysis_data
-        
-        logger.info(f"[VPS] ✅ Frame procesado exitosamente, retornando resultado")
         return jsonify(response_data), 200
         
     except Exception as e:
-        logger.error(f"[VPS] ❌ Error procesando frame del cliente: {e}")
+        logger.error(f"[VPS] ❌ Error procesando frame: {e}")
         import traceback
-        error_traceback = traceback.format_exc()
-        logger.error(f"[VPS] Traceback completo:\n{error_traceback}")
-        
-        # Retornar error detallado pero no exponer detalles internos al cliente
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'error': f'Error en servidor: {type(e).__name__}',
-            'message': str(e)[:200]  # Limitar longitud del mensaje
+            'error': str(e)
         }), 500
+
+
+# Endpoint para resetear el análisis VPS
+@api_bp.route('/camera/reset_analysis', methods=['POST'])
+@login_required
+def reset_vps_analysis():
+    """Resetea los valores del análisis VPS"""
+    from app.core.vps_mediapipe_engine import get_vps_engine
+    
+    try:
+        vps_engine = get_vps_engine()
+        vps_engine.reset()
+        return jsonify({'success': True, 'message': 'Análisis reseteado'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================================

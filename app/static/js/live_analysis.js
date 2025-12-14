@@ -884,6 +884,98 @@ class LiveAnalysisController {
     }
     
     /**
+     * Actualiza la UI desde datos del VPS Camera Handler
+     * Este método es llamado cuando el procesamiento se hace en el servidor VPS
+     * y los datos de análisis vienen en la respuesta del frame procesado
+     */
+    updateFromVPSData(analysis) {
+        if (!analysis) return;
+        
+        console.log('[LiveAnalysis] Actualizando desde VPS data:', analysis);
+        
+        // Convertir formato de análisis VPS a formato esperado por updateUI
+        const data = {
+            angle: analysis.angle || 0,
+            max_rom: analysis.rom || (analysis.max_angle - analysis.min_angle) || 0,
+            side: analysis.side || 'right',
+            posture_valid: analysis.landmarks_detected || false,
+            landmarks_detected: analysis.landmarks_detected || false,
+            min_angle: analysis.min_angle || 180,
+            max_angle: analysis.max_angle || 0
+        };
+        
+        // Guardar lado detectado
+        if (data.side && data.side !== 'none') {
+            this.lastDetectedSide = data.side;
+        }
+        
+        // Mapear lado a etiqueta corta
+        const sideLabels = {
+            'left': 'IZQ',
+            'right': 'DER',
+            'izquierdo': 'IZQ',
+            'derecho': 'DER'
+        };
+        const sideLabel = sideLabels[data.side] || '---';
+        
+        // Actualizar ángulo actual CON LADO
+        const angleElement = document.getElementById('currentAngle');
+        if (angleElement && data.angle !== undefined) {
+            const angleAbs = Math.abs(data.angle).toFixed(1);
+            angleElement.textContent = `${angleAbs}° (${sideLabel})`;
+        }
+        
+        // Actualizar ROM máximo
+        const romElement = document.getElementById('maxROM');
+        if (romElement && data.max_rom !== undefined) {
+            romElement.textContent = `${data.max_rom.toFixed(1)}°`;
+        }
+        
+        // Actualizar indicador de Min/Max
+        const minElement = document.getElementById('minAngle');
+        if (minElement && analysis.min_angle !== undefined) {
+            minElement.textContent = `${analysis.min_angle.toFixed(1)}°`;
+        }
+        
+        const maxElement = document.getElementById('maxAngle');
+        if (maxElement && analysis.max_angle !== undefined) {
+            maxElement.textContent = `${analysis.max_angle.toFixed(1)}°`;
+        }
+        
+        // Actualizar estado de detección
+        const postureElement = document.getElementById('postureStatus');
+        if (postureElement && data.landmarks_detected !== undefined) {
+            if (data.landmarks_detected) {
+                postureElement.innerHTML = `
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Persona Detectada</span>
+                `;
+                postureElement.classList.add('valid');
+                postureElement.classList.remove('invalid');
+            } else {
+                postureElement.innerHTML = `
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>Buscando...</span>
+                `;
+                postureElement.classList.add('invalid');
+                postureElement.classList.remove('valid');
+            }
+        }
+        
+        // Actualizar gráfico
+        if (this.romChart && data.angle !== undefined) {
+            this.updateChart(Math.abs(data.angle));
+        }
+        
+        // Si estamos en modo pantalla completa, actualizar también esas métricas
+        if (typeof isFullscreenMode !== 'undefined' && isFullscreenMode) {
+            if (typeof updateFullscreenMetrics === 'function') {
+                updateFullscreenMetrics();
+            }
+        }
+    }
+
+    /**
      * Actualiza el gráfico de ROM
      */
     updateChart(angle) {
