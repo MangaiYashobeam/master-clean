@@ -83,6 +83,17 @@ class LiveAnalysisController {
         // Event listeners
         this.setupEventListeners();
         
+        // 📹 VPS MODE: Inicializar cámara del cliente
+        const deploymentMode = videoFeed?.dataset?.deploymentMode;
+        console.log('[LiveAnalysis] Deployment mode detectado:', deploymentMode);
+        
+        if (deploymentMode === 'VPS') {
+            console.log('[LiveAnalysis] Modo VPS - iniciando cámara del cliente');
+            this.initVPSCamera();
+        } else {
+            console.log('[LiveAnalysis] Modo LOCAL - usando stream del servidor');
+        }
+
         // Ocultar overlay cuando el video stream empiece a funcionar
         setTimeout(() => {
             const overlay = document.getElementById('loadingOverlay');
@@ -227,6 +238,165 @@ class LiveAnalysisController {
         document.head.appendChild(styles);
     }
     
+    /**
+     * 📹 VPS: Inicializar cámara del navegador
+     */
+    async initVPSCamera() {
+        console.log('[VPS] Inicializando cámara del cliente...');
+        const videoElement = document.getElementById('videoFeed');
+        
+        if (!videoElement || videoElement.tagName !== 'VIDEO') {
+            console.error('[VPS] Elemento de video no encontrado');
+            return;
+        }
+
+        try {
+            console.log('[VPS] Listando cámaras...');
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            console.log('[VPS] Cámaras encontradas:', videoDevices.length);
+            videoDevices.forEach((device, i) => {
+                console.log(`  [${i}] ${device.label || 'Cámara sin nombre'}`);
+            });
+
+            if (videoDevices.length === 0) {
+                throw new Error('No se encontraron cámaras');
+            }
+
+            const constraints = {
+                video: {
+                    deviceId: videoDevices[0].deviceId,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            };
+
+            console.log('[VPS] Solicitando acceso a cámara...');
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            videoElement.srcObject = stream;
+            await videoElement.play();
+            
+            console.log('[VPS] ✅ Cámara iniciada');
+
+            // Iniciar captura de frames
+            this.startVPSFrameCapture();
+
+            setTimeout(() => {
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay) overlay.style.display = 'none';
+            }, 1000);
+
+        } catch (error) {
+            console.error('[VPS] Error:', error.name, error.message);
+            
+            let errorMsg = 'No se pudo acceder a la cámara.\n\n';
+            
+            if (error.name === 'NotAllowedError') {
+                errorMsg += 'Concede permisos de cámara.';
+            } else if (error.name === 'NotFoundError') {
+                errorMsg += 'No se encontró cámara.';
+            } else if (error.name === 'NotReadableError') {
+                errorMsg += 'La cámara está en uso. Cierra otras aplicaciones.';
+            } else {
+                errorMsg += error.message;
+            }
+            
+            alert(errorMsg);
+        }
+    }
+
+    /**
+     * 📹 VPS: Capturar y procesar frames
+     */
+    startVPSFrameCapture() {
+        console.log('[VPS] Iniciando captura de frames...');
+        
+        const videoElement = document.getElementById('videoFeed');
+        if (!videoElement || videoElement.tagName !== 'VIDEO') {
+            console.error('[VPS] No se puede capturar');
+            return;
+        }
+
+        this.vpsCanvas = document.createElement('canvas');
+        this.vpsContext = this.vpsCanvas.getContext('2d');
+        this.vpsCanvas.width = 960;
+        this.vpsCanvas.height = 540;
+
+        // Canvas overlay para mostrar skeleton
+        this.vpsOverlay = document.createElement('canvas');
+        this.vpsOverlay.width = 960;
+        this.vpsOverlay.height = 540;
+        this.vpsOverlay.style.position = 'absolute';
+        this.vpsOverlay.style.top = '0';
+        this.vpsOverlay.style.left = '0';
+        this.vpsOverlay.style.width = '100%';
+        this.vpsOverlay.style.height = '100%';
+        this.vpsOverlay.style.pointerEvents = 'none';
+        this.vpsOverlay.style.zIndex = '10';
+        videoElement.parentElement.appendChild(this.vpsOverlay);
+        this.vpsOverlayCtx = this.vpsOverlay.getContext('2d');
+
+        this.vpsFrameInterval = setInterval(async () => {
+            try {
+                this.vpsContext.drawImage(videoElement, 0, 0, 960, 540);
+                const frameB64 = this.vpsCanvas.toDataURL('image/jpeg', 0.8);
+
+                const resp = await fetch('/api/vps/process_frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        frame: frameB64,
+                        exercise_key: this.config.exercise_key,
+                        segment_type: this.config.segment_type
+                    })
+                });
+
+                const result = await resp.json();
+                
+                if (result.success) {
+                    // Mostrar frame procesado con skeleton
+                    if (result.processed_frame) {
+                        const img = new Image();
+                        img.onload = () => {
+                            this.vpsOverlayCtx.clearRect(0, 0, 960, 540);
+                            this.vpsOverlayCtx.drawImage(img, 0, 0, 960, 540);
+                        };
+                        img.src = result.processed_frame;
+                    }
+
+                    // Actualizar UI
+                    if (result.current_angle) {
+                        const angleEl = document.getElementById('currentAngle');
+                        if (angleEl) {
+                            angleEl.textContent = Math.round(result.current_angle) + '°';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('[VPS] Error procesando frame:', e);
+            }
+        }, 100);
+
+        console.log('[VPS] ✅ Captura activa (10 FPS)');
+    }
+
+    /**
+     * 📹 VPS: Detener captura
+     */
+    stopVPSFrameCapture() {
+        if (this.vpsFrameInterval) {
+            clearInterval(this.vpsFrameInterval);
+            this.vpsFrameInterval = null;
+            console.log('[VPS] Captura detenida');
+        }
+        if (this.vpsOverlay && this.vpsOverlay.parentElement) {
+            this.vpsOverlay.parentElement.removeChild(this.vpsOverlay);
+        }
+    }
+
     /**
      * Configurar event listeners
      */
@@ -668,6 +838,7 @@ class LiveAnalysisController {
         try {
             // Detener polling de sesión primero
             this.stopSessionPolling();
+            this.stopVPSFrameCapture(); // Detener captura VPS
             this.hideStateOverlay();
             
             // Llamar al nuevo endpoint de sesión

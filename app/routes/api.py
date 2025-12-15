@@ -2258,3 +2258,104 @@ def _create_error_frame(message: str) -> bytes:
     # Codificar como JPEG
     ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
     return buffer.tobytes()
+
+
+# ============================================================================
+# VPS MODE: Procesamiento de frames del cliente
+# ============================================================================
+
+@api_bp.route('/vps/process_frame', methods=['POST'])
+@login_required
+def vps_process_frame():
+    """
+    Procesa un frame enviado desde el cliente en modo VPS.
+    
+    El cliente captura frames de su cámara y los envía como base64.
+    El servidor los procesa con MediaPipe y devuelve los resultados.
+    """
+    import base64
+    import numpy as np
+    import cv2
+    from app.analyzers.shoulder_profile import ShoulderProfileAnalyzer
+    from app.analyzers.shoulder_frontal import ShoulderFrontalAnalyzer
+    from app.analyzers.hip_profile import HipProfileAnalyzer
+    from app.analyzers.knee_profile import KneeProfileAnalyzer
+    from app.core.analysis_session import get_current_session
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'frame' not in data:
+            return jsonify({'success': False, 'error': 'No frame data'}), 400
+        
+        # Decodificar frame base64
+        frame_b64 = data['frame'].split(',')[1] if ',' in data['frame'] else data['frame']
+        frame_bytes = base64.b64decode(frame_b64)
+        frame_array = np.frombuffer(frame_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return jsonify({'success': False, 'error': 'Invalid frame'}), 400
+        
+        # Obtener analyzer según ejercicio
+        exercise_key = data.get('exercise_key', 'flexion')
+        segment_type = data.get('segment_type', 'shoulder')
+        
+        # Determinar analyzer
+        if segment_type == 'shoulder':
+            if exercise_key in ['flexion', 'extension']:
+                analyzer_class = ShoulderProfileAnalyzer
+            else:
+                analyzer_class = ShoulderFrontalAnalyzer
+        elif segment_type == 'hip':
+            analyzer_class = HipProfileAnalyzer
+        elif segment_type == 'knee':
+            analyzer_class = KneeProfileAnalyzer
+        else:
+            analyzer_class = ShoulderProfileAnalyzer
+        
+        # Crear analyzer si no existe
+        if not hasattr(current_app, '_vps_analyzer') or current_app._vps_analyzer is None:
+            current_app._vps_analyzer = analyzer_class()
+        
+        analyzer = current_app._vps_analyzer
+        
+        # Procesar frame
+        processed_frame = analyzer.process_frame(frame)
+        
+        # Obtener datos del analyzer
+        landmarks_detected = analyzer.landmarks_detected if hasattr(analyzer, 'landmarks_detected') else False
+        current_angle = analyzer.current_angle if hasattr(analyzer, 'current_angle') else None
+        orientation = analyzer.detected_orientation if hasattr(analyzer, 'detected_orientation') else None
+        
+        # Codificar frame procesado
+        _, buffer = cv2.imencode('.jpg', processed_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        processed_b64 = base64.b64encode(buffer).decode('utf-8')
+        
+        # Actualizar sesión si existe
+        session_result = None
+        analysis_session = get_current_session()
+        if analysis_session and analysis_session.is_active:
+            session_result = analysis_session.process_frame(
+                landmarks=landmarks_detected,
+                current_angle=current_angle,
+                detected_orientation=orientation
+            )
+        
+        return jsonify({
+            'success': True,
+            'landmarks_detected': landmarks_detected,
+            'current_angle': current_angle,
+            'orientation': orientation,
+            'processed_frame': 'data:image/jpeg;base64,' + processed_b64,
+            'session_result': session_result
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"[VPS] Error procesando frame: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
